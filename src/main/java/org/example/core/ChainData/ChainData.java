@@ -1,34 +1,34 @@
+// ChainData.java —— 终极进化版（枚举驱动 · 常量全灭 · 永封版）
 package org.example.core.ChainData;
+
 import java.io.IOException;
 
 /**
- * SerializableData: QubeChain 中所有数据单元（交易、区块、容器）的抽象基础接口。
- * 确保所有核心对象都具备高效的字节序列化和反序列化能力。
+ * ChainData: 所有上链数据对象的统一接口
+ * 2025年全球最硬版本：完全由 ChainDataType 枚举驱动！
  */
+// ChainData.java —— 终极进化版（类型是属性！不是方法！）
+
+import java.io.IOException;
+
 public interface ChainData {
-    // ====================== 核心序列化方法 ======================
 
-    /**
-     * 将当前数据对象转换为紧凑的字节数组。
-     */
+    // 序列化
     byte[] toByteArray() throws IOException;
-    /**
-     * 计算当前对象的确定性哈希值 (例如，SHA3-256)。
-     */
+
+    // 计算哈希
     byte[] calculateHash();
-    // ====================== 数据类型标识符 ======================
-    /**
-     * 获取数据负载的类型标识符。
-     * 用于在网络传输中，指示接收方（如 X 服务器）应如何解析和处理此数据。
-     *
-     * @return 数据的类型 ID (例如，1 = Transaction, 2 = DataRecord, 3 = SystemCall)。
-     */
-    byte getDataTypeId();
 
-    // ====================== 静态常量定义 ======================
+    // 类型是属性！不是方法！最硬！最纯粹！
+    ChainDataType TYPE = null; // 每个实现类必须赋值！
 
-    // 推荐使用 byte 类型（占用 1 字节）来存储类型 ID
-    byte TYPE_ID_TRANSACTION = 0x01;  // 交易（资产转移/状态修改）
-    byte TYPE_ID_DATA_RECORD = 0x02;  // 数据记录（纯粹的存储证明/文件哈希）
-    byte TYPE_ID_SYSTEM_CALL = 0x03;  // 系统调用（链内参数/节点状态变更）
+    // 兼容旧代码（最终删除）
+    @Deprecated(since = "2025-11-23", forRemoval = true)
+    default ChainDataType getDataType() {
+        return TYPE;
+    }
+
+    default byte getDataTypeId() {
+        return TYPE.typeId;
+    }
 }

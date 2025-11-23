@@ -1,8 +1,10 @@
 package org.example;   // 你现在的包名保持不变
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.example.config.QubePath;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
 import org.springframework.scheduling.annotation.EnableScheduling;   // 这行必须加！开启定时任务
 
 import java.security.Security;
@@ -24,7 +26,7 @@ public class QubeChainApplication {
     }
 
     public static void main(String[] args) {
-
+        QubePath.init(); // 就这一行！！！所有路径搞定！！！
         SpringApplication.run(QubeChainApplication.class, args);
 
         System.out.println("╔══════════════════════════════════════╗");

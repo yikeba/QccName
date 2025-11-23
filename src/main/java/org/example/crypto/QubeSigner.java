@@ -73,6 +73,34 @@ public class QubeSigner {
         );
     }
 
+    // ==================== 支持原始公钥字节的 verify（推荐！） ====================
+    public static boolean verifyRaw(byte[] message, byte[] signature, byte[] publicKeyRawBytes) {
+        if (publicKeyRawBytes.length != 1952) { // Dilithium5 公钥固定1952字节
+            throw new IllegalArgumentException("Dilithium5公钥必须1952字节，实际: " + publicKeyRawBytes.length);
+        }
+        if (signature.length < 2400 || signature.length > 2600) {
+            throw new IllegalArgumentException("签名长度异常: " + signature.length);
+        }
+
+        try {
+            // 关键：直接用原始字节构造！BouncyCastle 内部会自动解析 rho + t1
+            DilithiumPublicKeyParameters pubKey = new DilithiumPublicKeyParameters(PARAMS, publicKeyRawBytes);
+
+            DilithiumSigner verifier = new DilithiumSigner();
+            verifier.init(false, pubKey);
+            return verifier.verifySignature(message, signature);
+
+        } catch (Exception e) {
+            System.err.println("Dilithium验证失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // 兼容你之前可能用到的 String 版（可选）
+    public static boolean verifyRaw(byte[] message, byte[] signature, String publicKeyHex) {
+        return verifyRaw(message, signature, Hex.decode(publicKeyHex));
+    }
+
     // 持有 Hex 格式密钥
     public static class DilithiumKeyPair {
         public final String privateKeyHex;

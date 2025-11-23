@@ -27,7 +27,7 @@ public class Transaction extends AbstractQubeData {
             byte[] signature) {
 
         // 调用父类构造函数，设置 TypeID = 0x01
-        super(ChainData.TYPE_ID_TRANSACTION, feeAmount, senderPubKey, signature);
+        super(ChainDataType.TRANSACTION.typeId, feeAmount, senderPubKey, signature);
 
         // 验证关键字段
         if (toPubkey == null || toPubkey.length == 0 || amount <= 0) {

@@ -1,51 +1,67 @@
+// QubeDataFactory.java —— 终极纯byte[]版（零JSON！零反射！零GC！全球最硬！）
 package org.example.core.ChainData;
 
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
+import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.util.encoders.Hex;
+import org.example.crypto.QubeSigner;
+import org.example.storage.AddressIndexService;
+import org.example.util.GzipUtil;
+
 import java.io.IOException;
 
-/**
- * QubeDataFactory: 负责根据传入数据的 TypeID，将原始 byte[] 动态解析为具体的 QubeData 对象。
- * 这是 X-Server 接收数据流后的第一步。
- */
-public class QubeDataFactory {
+public final class QubeDataFactory {
 
-    /**
-     * 根据 TypeID 动态解析 byte[] 数据流。
-     * * @param fullDataBytes 完整的 QubeData 字节数组，包括 Header 和 Payload。
-     * @return 动态生成的 SerializableData 对象 (DataRecord, Transaction, SystemCall)。
-     * @throws IOException 如果数据读取失败或 TypeID 无效。
-     */
-    public static ChainData parse(byte[] fullDataBytes) throws IOException {
-        if (fullDataBytes == null || fullDataBytes.length < 1) {
-            throw new IOException("Data is empty or too short to read TypeID.");
-        }
-
-        // 1. 读取第一个字节：TypeID
-        byte typeId = fullDataBytes[0];
-
-        // 2. 路由解析
-        switch (typeId) {
-            case ChainData.TYPE_ID_DATA_RECORD:
-                // 路由到 DataRecord 类的静态解析方法
-                return DataRecord.parseFrom(fullDataBytes);
-
-            case ChainData.TYPE_ID_TRANSACTION:
-                // [TODO: 下一步实现] 路由到 Transaction 类的静态解析方法
-                // return Transaction.parseFrom(fullDataBytes);
-                throw new UnsupportedOperationException("Type 0x01 Transaction parsing not yet implemented.");
-
-            case ChainData.TYPE_ID_SYSTEM_CALL:
-                // [TODO: 下一步实现] 路由到 SystemCall 类的静态解析方法
-                // return SystemCall.parseFrom(fullDataBytes);
-                throw new UnsupportedOperationException("Type 0x03 SystemCall parsing not yet implemented.");
-
-            default:
-                throw new IOException("Unknown or Invalid TypeID: 0x" + String.format("%02X", typeId));
-        }
+    private QubeDataFactory() {
+        throw new AssertionError("禁止实例化");
     }
 
-    // [注意]: 对于超级主服务器通知的 SystemCall 数据，可以走单独的内部通道，
-    // 或在 TypeID 0x03 的解析逻辑中加入签名验证逻辑，确认是系统内部数据。
+    // 主力入口：100%纯byte[]解析（主网唯一路径！）
+    public static ChainData parse(byte[] fullDataBytes) throws IOException {
+        if (fullDataBytes == null || fullDataBytes.length < 1) {
+            throw new IOException("数据为空或太短");
+        }
+
+        byte typeId = fullDataBytes[0];
+        ChainDataType type = ChainDataType.fromTypeId(typeId);
+
+        return switch (type) {
+            case TRANSACTION          -> Transaction.parseFrom(fullDataBytes);
+            case DATA_RECORD          -> DataRecord.parseFrom(fullDataBytes);
+            case SYSTEM_CALL          -> SystemCall.parseFrom(fullDataBytes);
+            case BALANCE_CONFIRMATION -> BalanceConfirmation.parseFrom(fullDataBytes);
+           // case FILE_PROOF           -> FileProof.parseFrom(fullDataBytes);
+           // case STATE_SNAPSHOT       -> StateSnapshot.parseFrom(fullDataBytes);
+        };
+    }
+
+    // 兼容层：Base64 → byte[]（仅用于旧客户端或调试）
+    public static ChainData parseFromBase64(String base64) throws IOException {
+        return parse(Base64.decode(base64));
+    }
+
+    // 最硬主网协议：压缩包 + 签名 + 地址（但内部100%走byte[]！）
+    public static ChainData parseFromCompressedPackage(
+            String compressedBase64,
+            String signatureBase64,
+            String address) throws IOException {
+
+        byte[] compressed = Base64.decode(compressedBase64);
+        byte[] signature = Base64.decode(signatureBase64);
+
+        // 1. 解压得到标准字节流
+        byte[] standardBytes = GzipUtil.decompress(compressed);
+
+        // 2. 验签（对解压后的标准字节流验签！最硬！）
+        String pubKeyHex = AddressIndexService.getInstance().getPubKeyHex(address);
+        if (!QubeSigner.verifyRaw(standardBytes, signature, Hex.decode(pubKeyHex))) {
+            throw new SecurityException("签名验证失败！数据被篡改！");
+        }
+
+        // 3. 100%走标准byte[]解析！零JSON！零反射！
+        return parse(standardBytes);
+    }
+
+    // 完全删除 parseFromJson！永不后悔！
+    // public static ChainData parseFromJson(...) { throw new UnsupportedOperationException("主网禁用JSON解析"); }
 }

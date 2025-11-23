@@ -18,7 +18,7 @@ public class DataRecord extends AbstractQubeData {
             byte[] senderPubKey,
             byte[] signature) {
 
-        super(ChainData.TYPE_ID_DATA_RECORD, feeAmount, senderPubKey, signature);
+        super(ChainDataType.DATA_RECORD.typeId, feeAmount, senderPubKey, signature);
 
         // 构造器字段赋值
         if (recordType == null || dataPayload == null) {

@@ -38,7 +38,7 @@ public class BalanceConfirmation extends AbstractQubeData {
             byte[] signature) {
 
         // 调用父类构造函数，设置 TypeID = 0x02 (DataRecord)
-        super(ChainData.TYPE_ID_DATA_RECORD, feeAmount, containerServerID, signature);
+        super(ChainDataType.DATA_RECORD.typeId, feeAmount, containerServerID, signature);
 
         if (transactionHash == null || transactionHash.length == 0) {
             throw new IllegalArgumentException("Transaction Hash must be provided.");
@@ -48,6 +48,12 @@ public class BalanceConfirmation extends AbstractQubeData {
         this.senderFinalBalance = senderFinalBalance;
         this.receiverFinalBalance = receiverFinalBalance;
         this.containerServerID = containerServerID;
+    }
+
+    public static BalanceConfirmation parseFrom(byte[] fullDataBytes) throws IOException {
+        // [TODO: 实现细节] 需要实现完整的 Header 和 Payload Body 的反序列化逻辑
+        // 重点是：确保 toPubkey, amount, assetId, memo 的读取顺序和长度与 getPayloadBody() 严格一致。
+        throw new UnsupportedOperationException("Transaction Deserialization TBD.");
     }
 
     // ====================== 核心序列化与解析 ======================
@@ -111,5 +117,10 @@ public class BalanceConfirmation extends AbstractQubeData {
                 Hex.toHexString(this.senderPubKey), // 父类的 senderPubKey 实际为签署者
                 this.feeAmount
         );
+    }
+
+    @Override
+    public ChainDataType getDataType() {
+        return null;
     }
 }

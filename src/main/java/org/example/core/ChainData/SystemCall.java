@@ -38,7 +38,7 @@ public class SystemCall extends AbstractQubeData {
             byte[] signature) {
 
         // 调用父类构造函数，设置 TypeID = 0x03 (SystemCall)
-        super(ChainData.TYPE_ID_SYSTEM_CALL, feeAmount, superServerPubKey, signature);
+        super(ChainDataType.SYSTEM_CALL.typeId, feeAmount, superServerPubKey, signature);
 
         if (callPayload == null || callPayload.length == 0) {
             throw new IllegalArgumentException("SystemCall requires a non-empty payload.");
@@ -50,6 +50,12 @@ public class SystemCall extends AbstractQubeData {
         this.callType = callType;
         this.effectiveGlobalHeight = effectiveGlobalHeight;
         this.callPayload = callPayload;
+    }
+
+    public static SystemCall parseFrom(byte[] fullDataBytes) throws IOException {
+        // [TODO: 实现细节] 需要实现完整的 Header 和 Payload Body 的反序列化逻辑
+        // 重点是：确保 toPubkey, amount, assetId, memo 的读取顺序和长度与 getPayloadBody() 严格一致。
+        throw new UnsupportedOperationException("Transaction Deserialization TBD.");
     }
 
     // ====================== 核心序列化与解析 ======================
