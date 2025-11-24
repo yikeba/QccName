@@ -1,5 +1,7 @@
 package org.example.core.ChainData;
 
+import org.example.crypto.CryptoUtil;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -22,7 +24,7 @@ public abstract class AbstractQubeData implements ChainData {
     // 4. 发送方公钥：用于验证签名的 Dilithium 公钥 (byte[])
     protected final byte[] senderPubKey;
     // 5. 载荷哈希：具体数据体 (Payload Body) 的哈希值 (32 bytes)
-    protected final byte[] payloadHash;
+    private byte[] payloadHash;
     // 6. 签名：客户对整个 Header Hash 的 Dilithium 签名 (byte[])
     protected final byte[] signature;
     // ====================== 构造函数 (Constructor) ======================
@@ -41,7 +43,7 @@ public abstract class AbstractQubeData implements ChainData {
         this.senderPubKey = senderPubKey;
         this.signature = signature;
 
-        this.payloadHash = calculatePayloadHash();   // 载荷哈希在具体子类中构造 Payload Body 后计算并赋值
+       // this.payloadHash = calculatePayloadHash();   // 载荷哈希在具体子类中构造 Payload Body 后计算并赋值
 
     }
 
@@ -76,17 +78,15 @@ public abstract class AbstractQubeData implements ChainData {
      * 【重要】计算 Payload Body 的确定性哈希。
      * @return SHA-256/SHA3-256 结果。
      */
-    private byte[] calculatePayloadHash() {
+    public byte[] calculatePayloadHash() {
         try {
-            // 注意：这里需要引入您的 Hash 工具类，我们假设有一个 QubeHashUtil.sha256(byte[])
-            // 为简化，我们先使用一个占位哈希，您后续需替换为真正的 SHA3-256/SHA-256
-            return Arrays.copyOf(getPayloadBody(), 32);
+            byte[] payloadBody = getPayloadBody();
+            // 正确！用真正的SHA3-256哈希！
+            return CryptoUtil.sha256(payloadBody);
         } catch (IOException e) {
-            // 严重错误：如果 Payload Body 无法生成，则无法计算哈希
-            throw new RuntimeException("Error calculating payload hash.", e);
+            throw new RuntimeException("计算PayloadHash失败，无法构造数据对象", e);
         }
     }
-
     /**
      * 【关键方法】将整个数据对象序列化为 byte[]。
      * 头部 (Header) 字段必须以确定的顺序写入，Payload Body 紧随其后。
@@ -102,12 +102,14 @@ public abstract class AbstractQubeData implements ChainData {
             dos.writeLong(feeAmount);
             // 写入哈希和公钥，这些都是 byte[]
             dos.write(senderPubKey);
-            dos.write(payloadHash);
-            dos.write(signature);
+           //
+            if(signature!=null)dos.write(signature);
+
 
             // 2. 写入可变长度的数据体 (Payload Body)
             byte[] payloadBody = getPayloadBody();
-
+            payloadHash = calculatePayloadHash();
+            dos.write(payloadHash);
             // 【注意】：为了让接收方知道 Payload Body 的长度，我们需要在前面写入一个长度前缀！
             dos.writeInt(payloadBody.length);
             dos.write(payloadBody);

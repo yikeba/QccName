@@ -119,8 +119,8 @@ public class BalanceConfirmation extends AbstractQubeData {
         );
     }
 
-    @Override
+/*    @Override
     public ChainDataType getDataType() {
         return null;
-    }
+    }*/
 }

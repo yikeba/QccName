@@ -15,10 +15,10 @@ public class DataRecord extends AbstractQubeData {
             String recordType,
             byte[] dataPayload,
             long feeAmount,
-            byte[] senderPubKey,
+            byte[] address,
             byte[] signature) {
 
-        super(ChainDataType.DATA_RECORD.typeId, feeAmount, senderPubKey, signature);
+        super(ChainDataType.DATA_RECORD.typeId, feeAmount, address, signature);
 
         // 构造器字段赋值
         if (recordType == null || dataPayload == null) {
@@ -26,6 +26,7 @@ public class DataRecord extends AbstractQubeData {
         }
         this.recordType = recordType;
         this.dataPayload = dataPayload;
+        System.out.println("构造数据类型:"+recordType+"数据本体长度:"+dataPayload.length);
     }
 
     /**
@@ -44,13 +45,10 @@ public class DataRecord extends AbstractQubeData {
     protected byte[] getPayloadBody() throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              DataOutputStream dos = new DataOutputStream(baos)) {
-            // 1. 写入 RecordType (写入长度 + 写入内容)
             byte[] typeBytes = recordType.getBytes(StandardCharsets.UTF_8);
             dos.writeInt(typeBytes.length);
             dos.write(typeBytes);
-            // 2. 写入 Data Payload Length
             dos.writeInt(dataPayload.length);
-            // 3. 写入 Data Payload
             dos.write(dataPayload);
             dos.flush();
             return baos.toByteArray();

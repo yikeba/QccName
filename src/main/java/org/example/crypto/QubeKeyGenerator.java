@@ -6,6 +6,7 @@ import org.bouncycastle.util.encoders.Hex;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.MessageDigest;
 
@@ -60,7 +61,7 @@ public class QubeKeyGenerator {
         byte[] binaryAddr = new byte[25];
         System.arraycopy(versioned, 0, binaryAddr, 0, 21);
         System.arraycopy(checksum, 0, binaryAddr, 21, 4);
-        String base58 = base58Encode(binaryAddr);
+        String base58 = base58Encode(checksum);
         String address = "Q" + base58.substring(1); // 强制Q开头
         System.out.println("抗量子钱包生成成功！");
         System.out.println("地址: " + address + " (长度: " + address.length() + ")");
@@ -102,7 +103,7 @@ public class QubeKeyGenerator {
         }
     }
 
-    private static String base58Encode(byte[] input) {
+    public static String base58Encode(byte[] input) {
         // 经典Base58实现（比特币/TRON同款）
         StringBuilder sb = new StringBuilder();
         int zeros = 0;
@@ -118,4 +119,10 @@ public class QubeKeyGenerator {
         for (int i = 0; i < zeros; i++) sb.insert(0, BASE58[0]);
         return sb.toString();
     }
+
+
+
+
+
+
 }

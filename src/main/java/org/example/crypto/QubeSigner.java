@@ -47,18 +47,19 @@ public class QubeSigner {
 
     // 客户用这个！！！从Base64私钥签名
     public static String sign(String message, String privateKey)  {
-        //byte[] privEncoded = Base64.getDecoder().decode(privateKeyBase64);
-        //byte[] privEncoded =DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
-
-        //System.out.println("解码后的私钥字节数组长度: " + privEncoded.length);
-
-        // 直接用字节数组
-        // PrivateKeyInfo pkInfo = PrivateKeyInfo.getInstance(privEncoded);
         DilithiumPrivateKeyParameters privKey =
                // (DilithiumPrivateKeyParameters) PrivateKeyFactory.createKey(pkInfo);
         DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
         return sign(message,privKey);
     }
+
+    public static byte[] signRaw(byte[] data, DilithiumPrivateKeyParameters privateKey) {
+        if (privateKey == null) throw new IllegalArgumentException("私钥不能为空");
+        DilithiumSigner signer = new DilithiumSigner();
+        signer.init(true, privateKey);
+        return signer.generateSignature(data);  // 直接签原始字节！最硬！
+    }
+
 
     // 验证
     public static boolean verify(String message, String signatureHex, String publicKeyHex) {
@@ -100,6 +101,8 @@ public class QubeSigner {
     public static boolean verifyRaw(byte[] message, byte[] signature, String publicKeyHex) {
         return verifyRaw(message, signature, Hex.decode(publicKeyHex));
     }
+
+
 
     // 持有 Hex 格式密钥
     public static class DilithiumKeyPair {

@@ -40,6 +40,11 @@ public class ContainerManager {
         c.appendBlock(sealedBlock);
     }
 
+    public synchronized void forceSealCurrentContainer() {
+        System.out.println("【开发者接口】强制密封当前容器（用于测试或系统调用）");
+        sealCurrentContainer();  // 直接调用私有方法，但通过公开接口暴露！
+    }
+
     // 强制触发密封（由定时器或外部共识调用）
     private synchronized void sealCurrentContainer() {
         Container c = currentContainer;

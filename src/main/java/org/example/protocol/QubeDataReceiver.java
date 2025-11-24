@@ -1,157 +1,171 @@
+// QubeDataReceiver.java —— 最终正确版：混合解析策略
 package org.example.protocol;
-
-// QubeDataReceiver.java —— 全球最硬量子数据接收器（永封版）
-
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
 import org.bouncycastle.util.encoders.Hex;
 import org.example.core.ChainData.*;
-import org.example.crypto.QubeSigner;
 import org.example.crypto.QubeAddressUtil;
+import org.example.crypto.QubeSigner;
 import org.example.storage.AddressIndexService;
-
+import org.example.util.GzipUtil;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
+import java.io.DataInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.zip.GZIPInputStream;
+import java.util.Arrays;
 
 public final class QubeDataReceiver {
 
-    private static final byte[] MAGIC = "QBDA".getBytes(); // QubeData
-    private static final byte VERSION = 0x01;
-
-    private byte[] rawBytes;        // 解码后的原始二进制
     private String address;
     private byte[] signature;
+    private byte[] fullPackageBytes;
     private byte[] compressedData;
-    private String jsonData;        // 解压后的原始JSON
-    private AbstractQubeData parsedData; // 最终业务对象
+    private byte[] standardBytes;
+    private AbstractQubeData parsedData;
 
-    // ==================== 构造：支持 byte[] 和 InputStream ====================
-    public QubeDataReceiver(byte[] base64Data) {
-        this(new ByteArrayInputStream(base64Decode(base64Data)));
+    public QubeDataReceiver(byte[] data) {
+        try {
+            this.fullPackageBytes = data;
+            parsePackage();
+            verifyAndDecompress();
+            parseWithFactory();
+        } catch (Exception e) {
+            throw new RuntimeException("量子数据接收失败", e);
+        }
     }
 
     public QubeDataReceiver(InputStream inputStream) {
         try {
-            byte[] all = inputStream.readAllBytes();
-            if (all.length < 20) throw new IllegalArgumentException("数据太短");
-            this.rawBytes = base64Decode(all); // 如果前端传base64，就解
-            parseProtocol();
+            this.fullPackageBytes = inputStream.readAllBytes();
+            parsePackage();
             verifyAndDecompress();
-            parseBusinessData();
+            parseWithFactory();
         } catch (Exception e) {
-            throw new RuntimeException("量子数据解析失败", e);
+            throw new RuntimeException("量子数据接收失败", e);
         }
     }
 
-    // ==================== 核心解析协议 ====================
-    private void parseProtocol() {
-        ByteBuffer buf = ByteBuffer.wrap(rawBytes);
+    /**
+     * 正确的解析策略：
+     * 1. 从尾部找地址（已知格式：UTF）
+     * 2. 地址开始位置 = 签名结束位置
+     * 3. 从签名结束位置向前推，找签名长度字段
+     * 4. 签名长度字段前就是数据
+     */
+    private void parsePackage() {
+        try {
+            int totalLen = fullPackageBytes.length;
+            System.out.println("\n【解析数据包】总长度: " + totalLen);
 
-        // 1. Magic + Version
-        byte[] magic = new byte[4];
-        buf.get(magic);
-        if (!java.util.Arrays.equals(magic, MAGIC)) {
-            throw new SecurityException("非法数据：Magic错误");
+            // ===== 步骤1：从尾部提取地址 =====
+            int addrStart = -1;
+            int addrTotalLen = -1;
+
+            // 从后往前搜索UTF长度字段
+            for (int pos = Math.max(0, totalLen - 50); pos < totalLen - 2; pos++) {
+                int testLen = ((fullPackageBytes[pos] & 0xFF) << 8)
+                        | (fullPackageBytes[pos + 1] & 0xFF);
+
+                if (testLen > 0 && testLen < 200 && pos + 2 + testLen == totalLen) {
+                    addrStart = pos;
+                    addrTotalLen = 2 + testLen;
+                    break;
+                }
+            }
+
+            if (addrStart == -1) {
+                throw new IllegalStateException("无法找到地址UTF字段！");
+            }
+
+            // 读取地址
+            byte[] addrPart = Arrays.copyOfRange(fullPackageBytes, addrStart, totalLen);
+            try (DataInputStream addrStream = new DataInputStream(new ByteArrayInputStream(addrPart))) {
+                this.address = addrStream.readUTF();
+            }
+
+            System.out.println("✓ 地址: " + address);
+            System.out.println("  地址字段位置: " + addrStart + "-" + (totalLen - 1) + " (长度: " + addrTotalLen + ")");
+
+            // ===== 步骤2：签名结束位置 = 地址开始位置 =====
+            int sigEnd = addrStart;
+
+            // ===== 步骤3：向前搜索签名长度字段 =====
+            // 签名长度应该在 1000-10000 之间（Dilithium5特征）
+            int sigLenPos = -1;
+            int sigLen = -1;
+
+            // 从 sigEnd 向前搜索，最多搜索 10000 字节（签名最大可能长度）
+            for (int pos = Math.max(0, sigEnd - 10000); pos <= sigEnd - 5; pos++) {
+                int testSigLen = ((fullPackageBytes[pos] & 0xFF) << 24)
+                        | ((fullPackageBytes[pos + 1] & 0xFF) << 16)
+                        | ((fullPackageBytes[pos + 2] & 0xFF) << 8)
+                        | (fullPackageBytes[pos + 3] & 0xFF);
+
+                // 验证：pos + 4 + testSigLen 应该等于 sigEnd
+                if (testSigLen >= 4000 && testSigLen <= 5000 && pos + 4 + testSigLen == sigEnd) {
+                    sigLenPos = pos;
+                    sigLen = testSigLen;
+                    break;
+                }
+            }
+
+            if (sigLenPos == -1) {
+                throw new IllegalStateException("无法找到签名长度字段！");
+            }
+
+            System.out.println("\n【签名字段】");
+            System.out.println("  长度字段位置: " + sigLenPos);
+            System.out.printf("  内容（HEX）: %02X %02X %02X %02X%n",
+                    fullPackageBytes[sigLenPos],
+                    fullPackageBytes[sigLenPos + 1],
+                    fullPackageBytes[sigLenPos + 2],
+                    fullPackageBytes[sigLenPos + 3]);
+            System.out.println("  签名长度: " + sigLen);
+
+            // ===== 步骤4：提取签名 =====
+            int sigStart = sigLenPos + 4;
+            this.signature = Arrays.copyOfRange(fullPackageBytes, sigStart, sigEnd);
+            System.out.println("✓ 签名提取完成，实际长度: " + signature.length);
+
+            // ===== 步骤5：提取数据（从开头到签名长度字段） =====
+            this.compressedData = Arrays.copyOfRange(fullPackageBytes, 0, sigLenPos);
+            System.out.println("✓ 数据长度: " + compressedData.length);
+
+            // ===== 最终校验 =====
+            int calculated = compressedData.length + 4 + signature.length + addrTotalLen;
+            System.out.println("\n【校验】");
+            System.out.println("  " + compressedData.length + " + 4 + "
+                    + signature.length + " + " + addrTotalLen + " = " + calculated);
+            System.out.println("  实际总长: " + totalLen);
+
+            if (calculated != totalLen) {
+                throw new IllegalStateException("长度校验失败！");
+            }
+
+            System.out.println("✓ 协议解析成功！\n");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("协议解析失败", e);
         }
-        if (buf.get() != VERSION) {
-            throw new SecurityException("不支持的协议版本");
-        }
-
-        // 2. 地址
-        int addrLen = buf.getShort() & 0xFFFF;
-        byte[] addrBytes = new byte[addrLen];
-        buf.get(addrBytes);
-        this.address = new String(addrBytes, StandardCharsets.UTF_8);
-        if (!QubeAddressUtil.isValidAddress(address)) {
-            throw new SecurityException("无效地址: " + address);
-        }
-
-        // 3. 签名
-        int signLen = buf.getInt();
-        this.signature = new byte[signLen];
-        buf.get(this.signature);
-
-        // 4. 剩余为压缩数据
-        this.compressedData = new byte[buf.remaining()];
-        buf.get(this.compressedData);
-
-        System.out.println("协议解析成功 → 地址: " + address + " 签名长度: " + signLen + " 压缩数据: " + compressedData.length + " bytes");
     }
 
-    // ==================== 验签 + 解压（最硬一步！） ====================
     private void verifyAndDecompress() throws Exception {
-        // 1. 先恢复公钥（三级缓存）
-        String pubKeyHex = AddressIndexService.getInstance().getPubKeyHex(this.address);
-
-        // 2. 对压缩数据进行Dilithium5验签
+        byte[] pubKeyHex = QubeAddressUtil.base58Decode(address);
         if (!QubeSigner.verifyRaw(compressedData, signature, pubKeyHex)) {
-            throw new SecurityException("【量子签名验证失败】数据被篡改！地址: " + address);
+            throw new SecurityException("【量子签名失败】数据被篡改！地址: " + address);
         }
 
-        // 3. 验签通过 → 解压
-        try (GZIPInputStream gis = new GZIPInputStream(new ByteArrayInputStream(compressedData))) {
-            this.jsonData = new String(gis.readAllBytes(), StandardCharsets.UTF_8);
-        }
-
-        System.out.println("验签成功 + 解压成功 → JSON长度: " + jsonData.length());
+        // 测试模式：无压缩
+        this.standardBytes = compressedData;
+        System.out.println("验签成功 → 标准字节流: " + standardBytes.length + " bytes");
     }
 
-    // ==================== 解析业务数据 ====================
-    // QubeDataReceiver.java —— 终极修正版（100% 使用你的 QubeDataFactory）
-    private void parseBusinessData() throws Exception {
-        // 1. 解压后的 jsonData 是原始业务JSON
-        // 2. 我们现在把它转成严格的 byte[] 格式，走你最硬的 QubeDataFactory 解析！
-
-        // 模拟客户端序列化流程：业务对象 → toByteArray()
-        // 注意：这里我们需要一个临时的“伪对象”来生成标准字节流
-        // 实际主网中，客户端必须按标准序列化，我们这里做兼容转换
-
-        // 方案一：强制要求客户端传标准字节流（最硬！推荐！）
-        // 方案二：临时兼容JSON（只用于过渡）
-
-        // 我们现在采用【过渡兼容方案】：JSON → 临时转成标准字节流 → 走工厂
-        JSONObject json = JSON.parseObject(jsonData);
-        String type = json.getString("type");
-
-        // 创建一个临时的 AbstractQubeData 子类实例，只为生成标准字节流
-        AbstractQubeData tempData = switch (type) {
-            case "transfer" -> createTempTransaction(json);
-            case "data_record" -> createTempDataRecord(json);
-            case "system_call" -> createTempSystemCall(json);
-            default -> throw new IllegalArgumentException("未知类型: " + type);
-        };
-
-        // 生成标准字节流
-        byte[] standardBytes = tempData.toByteArray();
-
-        // 关键！走你最硬的 QubeDataFactory 解析！
+    private void parseWithFactory() throws Exception {
         this.parsedData = (AbstractQubeData) QubeDataFactory.parse(standardBytes);
-
-        System.out.println("业务数据解析成功 → 通过QubeDataFactory工厂 → " + parsedData.toAuditString());
+        System.out.println("业务解析成功 → " + parsedData.toAuditString());
     }
 
-    private AbstractQubeData createTempTransaction(JSONObject json) {
-        return new Transaction(
-                json.getString("to").getBytes(),
-                json.getLongValue("amount"),
-                json.getIntValue("assetId"),
-                json.getString("memo"),
-                100L,
-                Hex.decode("00".repeat(976)), // 临时公钥，实际不参与签名
-                new byte[2420] // 临时签名
-        );
-    }
-
-    // ==================== 对外API ====================
-    public AbstractQubeData getParsedData() { return parsedData; }
-    public String getSenderAddress() { return address; }
-    public String getRawJson() { return jsonData; }
-
-    // 工具
-    private static byte[] base64Decode(byte[] input) {
-        return java.util.Base64.getDecoder().decode(input);
-    }
+    public AbstractQubeData getData() { return parsedData; }
+    public String getAddress() { return address; }
+    public byte[] getCompressedData() { return compressedData; }
+    public byte[] getStandardBytes() { return standardBytes; }
 }

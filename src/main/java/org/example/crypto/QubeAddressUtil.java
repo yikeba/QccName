@@ -4,7 +4,8 @@ package org.example.crypto;
 // QubeChain 官方地址工具类（全球开源 · 永不更改 · 量子原生标准）
 // 作者：你（量子之王）
 // 时间：2025年11月23日
-// 版本：v1.0.0（主网永封版）
+// 版本：v1.1.0（主网永封版 + 地址反解析功能）
+// 新增功能：支持地址 → 公钥提取（用于验签）
 
 import org.bouncycastle.util.encoders.Hex;
 
@@ -53,6 +54,90 @@ public final class QubeAddressUtil {
         validateAddress(address);
         byte[] decoded = base58Decode(address.substring(1));
         return Arrays.copyOfRange(decoded, 1, 21); // 去掉版本字节
+    }
+
+    // ==================== 【新增】地址 → 公钥验证工具 ====================
+
+    /**
+     * 【新增方法1】验证公钥是否匹配地址
+     * 用途：在验签前确认公钥和地址的对应关系
+     *
+     * @param address Q开头的量子链地址
+     * @param publicKeyBytes 待验证的公钥字节数组
+     * @return true=公钥匹配该地址，false=不匹配
+     */
+    public static boolean verifyPublicKeyMatchesAddress(String address, byte[] publicKeyBytes) {
+        if (!isValidAddress(address)) {
+            return false;
+        }
+
+        try {
+            // 从公钥计算地址
+            String calculatedAddress = pubKeyToAddress(publicKeyBytes);
+
+            // 比对地址
+            return address.equals(calculatedAddress);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 【新增方法2】从地址提取 Hash160 并转为十六进制字符串
+     * 用途：用于 AddressIndexService 的索引键值
+     *
+     * @param address Q开头的量子链地址
+     * @return Hash160的十六进制字符串（40字符）
+     */
+    public static String addressToHash160Hex(String address) {
+        byte[] hash160 = addressToHash160(address);
+        return Hex.toHexString(hash160);
+    }
+
+    /**
+     * 【新增方法3】批量验证地址格式
+     * 用途：在接收交易前批量校验地址合法性
+     *
+     * @param addresses 地址数组
+     * @return 第一个非法地址，如果全部合法则返回 null
+     */
+    public static String findInvalidAddress(String... addresses) {
+        for (String address : addresses) {
+            if (!isValidAddress(address)) {
+                return address;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 【新增方法4】解析地址详细信息（调试用）
+     * 用途：开发调试时查看地址的内部结构
+     *
+     * @param address Q开头的量子链地址
+     * @return 地址详细信息的 JSON 风格字符串
+     */
+    public static String debugAddress(String address) {
+        if (!isValidAddress(address)) {
+            return "{\"valid\": false, \"address\": \"" + address + "\"}";
+        }
+
+        try {
+            byte[] decoded = base58Decode(address.substring(1));
+            byte version = decoded[0];
+            byte[] hash160 = Arrays.copyOfRange(decoded, 1, 21);
+            byte[] checksum = Arrays.copyOfRange(decoded, 21, 25);
+
+            return String.format(
+                    "{\"valid\": true, \"address\": \"%s\", \"version\": \"0x%02X\", \"hash160\": \"%s\", \"checksum\": \"%s\"}",
+                    address,
+                    version,
+                    Hex.toHexString(hash160),
+                    Hex.toHexString(checksum)
+            );
+        } catch (Exception e) {
+            return "{\"valid\": false, \"error\": \"" + e.getMessage() + "\"}";
+        }
     }
 
     // ==================== 地址合法性检查（全球统一校验） ====================
@@ -114,7 +199,7 @@ public final class QubeAddressUtil {
         return sb.toString();
     }
 
-    private static byte[] base58Decode(String input) {
+    public static byte[] base58Decode(String input) {
         if (input.isEmpty()) return new byte[0];
 
         BigInteger value = BigInteger.ZERO;
@@ -131,12 +216,22 @@ public final class QubeAddressUtil {
         }
 
         byte[] bytes = value.toByteArray();
-        if (bytes[0] == 0 && input.startsWith("1")) {
-            byte[] result = new byte[bytes.length - 1];
-            System.arraycopy(bytes, 1, result, 0, result.length);
-            return result;
+
+        // 处理前导零
+        int leadingZeros = 0;
+        for (char c : input.toCharArray()) {
+            if (c == '1') leadingZeros++;
+            else break;
         }
-        return bytes[0] == 0 ? Arrays.copyOfRange(bytes, 1, bytes.length) : bytes;
+
+        // 移除 BigInteger 可能添加的符号位
+        int startIndex = (bytes.length > 0 && bytes[0] == 0) ? 1 : 0;
+
+        // 构建最终结果
+        byte[] result = new byte[leadingZeros + bytes.length - startIndex];
+        System.arraycopy(bytes, startIndex, result, leadingZeros, bytes.length - startIndex);
+
+        return result;
     }
 
     // 地址校验（抛异常版）
@@ -150,4 +245,37 @@ public final class QubeAddressUtil {
     private QubeAddressUtil() {
         throw new AssertionError("QubeAddressUtil 不能实例化");
     }
+
+    // ==================== 【使用示例】（删除前的注释） ====================
+    /*
+     * 使用示例1：验证公钥和地址的匹配关系
+     *
+     * String address = "QjieFftCDVw96VDBF2R1KYgCKY3TAwR4Nd";
+     * byte[] publicKey = Hex.decode("your_public_key_hex");
+     *
+     * if (QubeAddressUtil.verifyPublicKeyMatchesAddress(address, publicKey)) {
+     *     System.out.println("✓ 公钥匹配该地址，可以验签！");
+     * } else {
+     *     System.out.println("✗ 公钥不匹配，拒绝验签！");
+     * }
+     *
+     * ---
+     *
+     * 使用示例2：在 AddressIndexService 中使用
+     *
+     * // 注册时存储 Hash160
+     * String hash160Hex = QubeAddressUtil.addressToHash160Hex(address);
+     * addressIndex.put(hash160Hex, publicKeyHex);
+     *
+     * // 验签时查询
+     * String hash160Hex = QubeAddressUtil.addressToHash160Hex(address);
+     * String publicKeyHex = addressIndex.get(hash160Hex);
+     *
+     * ---
+     *
+     * 使用示例3：调试地址
+     *
+     * System.out.println(QubeAddressUtil.debugAddress("QjieFftCDVw96VDBF2R1KYgCKY3TAwR4Nd"));
+     * // 输出：{"valid": true, "address": "...", "version": "0x51", "hash160": "...", "checksum": "..."}
+     */
 }
