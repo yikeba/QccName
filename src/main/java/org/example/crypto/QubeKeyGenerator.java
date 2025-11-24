@@ -49,8 +49,8 @@ public class QubeKeyGenerator {
         String privHex= Hex.toHexString(getRawPrivateKeyBytes(privKey));
         String pubHex = Hex.toHexString(pubKey.getEncoded());
 
-        byte[] pubBytes = Hex.decode(pubHex);
-        byte[] sha256 = sha256(pubBytes);
+        //byte[] pubBytes = Hex.decode(pubHex);
+        byte[] sha256 = sha256(pubKey.getEncoded());
         byte[] hash160 = ripemd160(sha256);
 
         byte[] versioned = new byte[21];
@@ -62,7 +62,7 @@ public class QubeKeyGenerator {
         System.arraycopy(versioned, 0, binaryAddr, 0, 21);
         System.arraycopy(checksum, 0, binaryAddr, 21, 4);
         String base58 = base58Encode(checksum);
-        String address = "Q" + base58.substring(1); // 强制Q开头
+        String address = "Q" + base58;        // 可选 Q 前缀
         System.out.println("抗量子钱包生成成功！");
         System.out.println("地址: " + address + " (长度: " + address.length() + ")");
         System.out.println("私钥长度: " + privHex.length() + "... (测试阶段打印，上线必须加密私钥长度:)"+ privKey.getEncoded().length);

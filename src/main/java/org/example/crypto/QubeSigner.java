@@ -47,9 +47,7 @@ public class QubeSigner {
 
     // 客户用这个！！！从Base64私钥签名
     public static String sign(String message, String privateKey)  {
-        DilithiumPrivateKeyParameters privKey =
-               // (DilithiumPrivateKeyParameters) PrivateKeyFactory.createKey(pkInfo);
-        DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
+        DilithiumPrivateKeyParameters privKey = DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
         return sign(message,privKey);
     }
 
@@ -58,6 +56,12 @@ public class QubeSigner {
         DilithiumSigner signer = new DilithiumSigner();
         signer.init(true, privateKey);
         return signer.generateSignature(data);  // 直接签原始字节！最硬！
+    }
+
+    public static byte[] signRaw(byte[] data, String privateKey) {
+        if (privateKey == null) throw new IllegalArgumentException("私钥不能为空");
+        DilithiumPrivateKeyParameters privKey = DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
+        return signRaw(data,privKey);
     }
 
 
