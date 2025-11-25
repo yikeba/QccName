@@ -1,31 +1,23 @@
-// ChainDataType.java —— 终极兼容版（零破坏迁移！全球最硬！）
 package org.example.core.ChainData;
 
+import java.io.IOException;
+
+// ChainDataType.java
 public enum ChainDataType {
-    TRANSACTION         (0x01, "transfer"),
-    DATA_RECORD         (0x02, "data_record"),
-    SYSTEM_CALL         (0x03, "system_call"),
-    BALANCE_CONFIRMATION(0x04, "balance_confirmation");
+    TRADE   (0x01, TradeRecord::parseFrom),    // 交易：转账、发币、股票、NFT
+    RULE    (0x02, RuleRecord::parseFrom),     // 规则：发票、合同、公告、DAO提案
+    ENTITY  (0x03, EntityRecord::parseFrom);   // 实体：人、企业、国家、证书、身份
 
     public final byte typeId;
-    public final String typeName;
-
-    ChainDataType(int typeId, String typeName) {
-        this.typeId = (byte) typeId;
-        this.typeName = typeName;
-    }
-
-    public static ChainDataType fromTypeId(byte typeId) {
-        for (ChainDataType t : values()) {
-            if (t.typeId == typeId) return t;
-        }
-        throw new IllegalArgumentException("未知TypeID: 0x" + String.format("%02X", typeId));
-    }
-
-    public static ChainDataType fromTypeName(String name) {
-        for (ChainDataType t : values()) {
-            if (t.typeName.equals(name)) return t;
-        }
-        throw new IllegalArgumentException("未知类型名: " + name);
+    private final DataParser parser;
+    ChainDataType(int id, DataParser p) { this.typeId = (byte)id; this.parser = p; }
+    public static ChainDataType fromId(byte id) {
+        return switch (id) {
+            case 0x01 -> TRADE;
+            case 0x02 -> RULE;
+            case 0x03 -> ENTITY;
+            default -> throw new IllegalArgumentException("未知类型: 0x" + Integer.toHexString(id & 0xFF));
+        };
     }
 }
+@FunctionalInterface interface DataParser { AbstractQubeData parse(byte[] d) throws IOException; }

@@ -2,7 +2,7 @@ package org.example.net;
 
 
 
-import org.example.core.ContainerManager;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,8 +10,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/chain")
 public class HttpServer {
 
-    @Autowired
-    private ContainerManager containerManager;  // 自动注入
+
 
     @PostMapping("/sales")
     public String submitSales(@RequestBody SalesRequest req) {

@@ -18,25 +18,6 @@ public class QubeSigner {
     // 使用 Dilithium5 参数，提供最高安全等级
     private static final DilithiumParameters PARAMS = DilithiumParameters.dilithium5;
 
-    // 生成密钥对
-    public static DilithiumKeyPair generateKeyPair() {
-        DilithiumKeyGenerationParameters params =
-                new DilithiumKeyGenerationParameters(new SecureRandom(), PARAMS);
-
-        DilithiumKeyPairGenerator generator = new DilithiumKeyPairGenerator();
-        generator.init(params);
-
-        AsymmetricCipherKeyPair kp = generator.generateKeyPair();
-
-        DilithiumPrivateKeyParameters priv = (DilithiumPrivateKeyParameters) kp.getPrivate();
-        DilithiumPublicKeyParameters pub = (DilithiumPublicKeyParameters) kp.getPublic();
-
-        return new DilithiumKeyPair(
-                Hex.toHexString(priv.getEncoded()),
-                Hex.toHexString(pub.getEncoded())
-        );
-    }
-
     // 签名（终极能跑版！！！直接用内存私钥对象）
     public static String sign(String message, DilithiumPrivateKeyParameters privateKey) {
         DilithiumSigner signer = new DilithiumSigner();
@@ -48,27 +29,38 @@ public class QubeSigner {
     // 客户用这个！！！从Base64私钥签名
     public static String sign(String message, String privateKey)  {
         DilithiumPrivateKeyParameters privKey = DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
-        return sign(message,privKey);
+        return sign(message, privKey);
+
     }
 
-    public static byte[] signRaw(byte[] data, DilithiumPrivateKeyParameters privateKey) {
+    // 客户用这个！！！从Base64私钥签名
+    public static byte[] signRow(String message, String privateKey)  {
+        DilithiumPrivateKeyParameters privKey = DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
+        return Hex.decode(sign(message, privKey));
+
+    }
+
+   public static byte[] signRaw(byte[] data, DilithiumPrivateKeyParameters privateKey) {
         if (privateKey == null) throw new IllegalArgumentException("私钥不能为空");
         DilithiumSigner signer = new DilithiumSigner();
         signer.init(true, privateKey);
         return signer.generateSignature(data);  // 直接签原始字节！最硬！
     }
 
-    public static byte[] signRaw(byte[] data, String privateKey) {
+
+
+    public static byte[] signRaw(byte[] data, String privateKey)  {
         if (privateKey == null) throw new IllegalArgumentException("私钥不能为空");
         DilithiumPrivateKeyParameters privKey = DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
-        return signRaw(data,privKey);
+        return signRaw(data, privKey);
+
     }
 
 
     // 验证
-    public static boolean verify(String message, String signatureHex, String publicKeyHex) {
+    public static boolean verifyString(String message, String signatureHex, String publicKeyHex) {
         byte[] pubBytes = Hex.decode(publicKeyHex);
-        // 【关键修改】：使用构造函数从原始字节还原公钥，而不是 getInstance
+        //System.out.println("进行签名验证，验证公钥字节长度:"+pubBytes.length);
         DilithiumPublicKeyParameters pubKey = new DilithiumPublicKeyParameters(PARAMS, pubBytes);
         DilithiumSigner verifier = new DilithiumSigner();
         verifier.init(false, pubKey);
@@ -78,27 +70,24 @@ public class QubeSigner {
         );
     }
 
+    // 验证
+    public static boolean verify(String message, String signatureHex, String publicKeyHex) {
+        byte[] pubBytes = Hex.decode(publicKeyHex);
+        byte[] sign= Hex.decode(signatureHex);
+        return verifyRaw(message.getBytes(),sign,pubBytes);
+    }
+
     // ==================== 支持原始公钥字节的 verify（推荐！） ====================
-    public static boolean verifyRaw(byte[] message, byte[] signature, byte[] publicKeyRawBytes) {
-        if (publicKeyRawBytes.length != 1952) { // Dilithium5 公钥固定1952字节
-            throw new IllegalArgumentException("Dilithium5公钥必须1952字节，实际: " + publicKeyRawBytes.length);
-        }
-        if (signature.length < 2400 || signature.length > 2600) {
-            throw new IllegalArgumentException("签名长度异常: " + signature.length);
-        }
+    public static boolean verifyRaw(byte[] message, byte[] signature, byte[] pubBytes) {
+       // System.out.println("进行签名验证，验证公钥字节长度:"+pubBytes.length);
+        DilithiumPublicKeyParameters pubKey = new DilithiumPublicKeyParameters(PARAMS, pubBytes);
+        DilithiumSigner verifier = new DilithiumSigner();
+        verifier.init(false, pubKey);
+        return verifier.verifySignature(
+                message,
+                signature
+        );
 
-        try {
-            // 关键：直接用原始字节构造！BouncyCastle 内部会自动解析 rho + t1
-            DilithiumPublicKeyParameters pubKey = new DilithiumPublicKeyParameters(PARAMS, publicKeyRawBytes);
-
-            DilithiumSigner verifier = new DilithiumSigner();
-            verifier.init(false, pubKey);
-            return verifier.verifySignature(message, signature);
-
-        } catch (Exception e) {
-            System.err.println("Dilithium验证失败: " + e.getMessage());
-            return false;
-        }
     }
 
     // 兼容你之前可能用到的 String 版（可选）
@@ -106,20 +95,7 @@ public class QubeSigner {
         return verifyRaw(message, signature, Hex.decode(publicKeyHex));
     }
 
-
-
-    // 持有 Hex 格式密钥
-    public static class DilithiumKeyPair {
-        public final String privateKeyHex;
-        public final String publicKeyHex;
-
-        public DilithiumKeyPair(String priv, String pub) {
-            this.privateKeyHex = priv;
-            this.publicKeyHex = pub;
-        }
-    }
 }
-
 
 
 // 假设您已将正确的 DilithiumParameters 设为静态常量

@@ -1,130 +1,123 @@
+// AbstractQubeData.java —— 三类数据唯一父类（永不翻车）
 package org.example.core.ChainData;
 
 import org.example.crypto.CryptoUtil;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+public abstract class AbstractQubeData {
 
-/**
- * AbstractQubeData: QubeChain 中所有可序列化数据（Transaction, DataRecord, SystemCall）的基类。
- * 它定义了固定长度的数据头（Header）和核心的安全属性。
- */
-public abstract class AbstractQubeData implements ChainData {
+    // ==================== 所有数据都有的基础字段 ====================
+    protected final ChainDataType type;           // 数据类型：TRADE / RULE / ENTITY
+    protected long timestamp;                     // 创建时间（支持反序列化修改）
+    protected final long feeAmount;               // 手续费
+    protected final byte[] senderPubKey;          // 发送者公钥
+    protected final byte[] signature;             // 完整签名
 
-    // ====================== 固定头部字段 (Fixed Header) ======================
-    // 1. 路由标识符：数据类型 (1 byte)
-    protected final byte typeId;
-    // 2. 时间戳：数据创建时间 (8 bytes)
-    protected final long timestamp;
-    // 3. 费用：支付给 X 服务器的费用 (8 bytes)
-    protected final long feeAmount;
-    // 4. 发送方公钥：用于验证签名的 Dilithium 公钥 (byte[])
-    protected final byte[] senderPubKey;
-    // 5. 载荷哈希：具体数据体 (Payload Body) 的哈希值 (32 bytes)
-    private byte[] payloadHash;
-    // 6. 签名：客户对整个 Header Hash 的 Dilithium 签名 (byte[])
-    protected final byte[] signature;
-    // ====================== 构造函数 (Constructor) ======================
-    // 构造函数用于初始化 Header 的固定字段
-    public AbstractQubeData(
-            byte typeId,
-            long feeAmount,
-            byte[] senderPubKey,
-            byte[] signature) {
-
-        // 自动设置当前时间戳
+    private transient byte[] payloadHash;          // payload 的 SHA3-256
+    private byte[] originalPayloadHash;  // 原始哈希，来自链上
+    protected AbstractQubeData(ChainDataType type, long feeAmount, byte[] senderPubKey, byte[] signature) {
+        this.type = type;
         this.timestamp = System.currentTimeMillis();
-
-        this.typeId = typeId;
         this.feeAmount = feeAmount;
-        this.senderPubKey = senderPubKey;
-        this.signature = signature;
-
-       // this.payloadHash = calculatePayloadHash();   // 载荷哈希在具体子类中构造 Payload Body 后计算并赋值
-
+        this.senderPubKey = senderPubKey != null ? senderPubKey.clone() : new byte[0];
+        this.signature = signature != null ? signature.clone() : new byte[0];
     }
 
-    // ====================== 核心抽象方法 (Core Abstractions) ======================
+    // 子类实现：业务字段 → byte[]
+    protected abstract byte[] serializePayload() throws IOException;
+    protected abstract void deserializePayload(DataInputStream dis) throws IOException;
 
-    /**
-     * 【子类必须实现】获取对象的具体数据体 (Payload Body)。
-     * 交易有转账金额，DataRecord 有文件哈希和链接，子类实现各自的结构。
-     * @return Payload Body 的字节数组。
-     */
-    protected abstract byte[] getPayloadBody() throws IOException;
+    // 强制要求实现：人类可读日志 + 前端JSON
+    public abstract String toAuditString();   // 必须！给人看！审计必备！
+    public abstract String toJSON();          // 必须！给前端看！
 
-    /**
-     * 【子类必须实现】将 Payload Body 转换为易读字符串（用于日志和审计）。
-     * @return 载荷内容的字符串描述。
-     */
-    public abstract String toAuditString();
+    // ==================== 全局统一序列化 ====================
+    public final byte[] toByteArray() throws IOException {
+        byte[] payload = serializePayload();
+        payloadHash = CryptoUtil.sha3256(payload);
 
-
-    /**
-     * 【子类实现/标准 3】返回供 Applet 使用的 JSON 格式数据。
-     */
-    public abstract String toJSON();
-    // ====================== 接口实现 (SerializableData) ======================
-
-    @Override
-    public byte getDataTypeId() {
-        return this.typeId;
-    }
-
-    /**
-     * 【重要】计算 Payload Body 的确定性哈希。
-     * @return SHA-256/SHA3-256 结果。
-     */
-    public byte[] calculatePayloadHash() {
-        try {
-            byte[] payloadBody = getPayloadBody();
-            // 正确！用真正的SHA3-256哈希！
-            return CryptoUtil.sha256(payloadBody);
-        } catch (IOException e) {
-            throw new RuntimeException("计算PayloadHash失败，无法构造数据对象", e);
-        }
-    }
-    /**
-     * 【关键方法】将整个数据对象序列化为 byte[]。
-     * 头部 (Header) 字段必须以确定的顺序写入，Payload Body 紧随其后。
-     */
-    @Override
-    public byte[] toByteArray() throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              DataOutputStream dos = new DataOutputStream(baos)) {
-
-            // 1. 写入固定长度的头部 (Header) 字段
-            dos.writeByte(typeId);
+            dos.writeByte(type.typeId);
             dos.writeLong(timestamp);
             dos.writeLong(feeAmount);
-            // 写入哈希和公钥，这些都是 byte[]
-            dos.write(senderPubKey);
-           //
-            if(signature!=null)dos.write(signature);
-
-
-            // 2. 写入可变长度的数据体 (Payload Body)
-            byte[] payloadBody = getPayloadBody();
-            payloadHash = calculatePayloadHash();
+            writeVarBytes(dos, senderPubKey);
+            writeVarBytes(dos, signature);
             dos.write(payloadHash);
-            // 【注意】：为了让接收方知道 Payload Body 的长度，我们需要在前面写入一个长度前缀！
-            dos.writeInt(payloadBody.length);
-            dos.write(payloadBody);
-
-            dos.flush();
+            dos.writeInt(payload.length);
+            dos.write(payload);
             return baos.toByteArray();
         }
     }
 
-    // 计算整个 Header 的哈希，用于签名验证
-    @Override
-    public byte[] calculateHash() {
-        // 这个哈希是用于 Dilithium 签名的最终数据源
-        // 它通常是 PayloadHash + TypeId + Timestamp 的组合哈希。
-        // 子类中可以重写或使用统一的 QubeHashUtil。
-        return this.payloadHash; // 简化处理，实际中需要包含所有关键 Header 字段。
+    // 公开 getter，供子类在 verifyIntegrity() 时使用
+    protected final byte[] getOriginalPayloadHash() {
+        return this.originalPayloadHash != null ? this.originalPayloadHash.clone() : null;
+    }
+
+    // ==================== 全局统一反序列化入口（最硬！） ====================
+    public static AbstractQubeData parseFrom(byte[] data) throws IOException {
+        if (data == null || data.length < 60) throw new IOException("数据太短");
+
+        DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
+        byte typeId = dis.readByte();
+        ChainDataType type = ChainDataType.fromId(typeId);
+
+        long timestamp = dis.readLong();
+        long feeAmount = dis.readLong();
+        byte[] pubKey = readVarBytes(dis);
+        byte[] sig = readVarBytes(dis);
+        byte[] hash = new byte[32];
+        dis.readFully(hash);
+        int len = dis.readInt();
+        byte[] payload = new byte[len];
+        dis.readFully(payload);
+
+        if (!Arrays.equals(hash, CryptoUtil.sha3256(payload))) {
+            throw new IOException("数据被篡改！Payload哈希不匹配");
+        }
+
+        // 路由到具体类解析
+        AbstractQubeData record = switch (type) {
+            case TRADE  -> TradeRecord.parseFrom(data);
+            case RULE   -> RuleRecord.parseFrom(data);
+            case ENTITY -> EntityRecord.parseFrom(data);
+        };
+        record.setTimestamp(timestamp);
+        return record;
+    }
+
+    // 工具方法
+    protected static void writeVarBytes(DataOutputStream dos, byte[] b) throws IOException {
+        dos.writeInt(b == null ? 0 : b.length);
+        if (b != null && b.length > 0) dos.write(b);
+    }
+    protected static byte[] readVarBytes(DataInputStream dis) throws IOException {
+        int len = dis.readInt();
+        if (len == 0) return new byte[0];
+        byte[] b = new byte[len];
+        dis.readFully(b);
+        return b;
+    }
+    protected static String readString(DataInputStream dis) throws IOException {
+        byte[] b = readVarBytes(dis);
+        return b.length == 0 ? "" : new String(b, StandardCharsets.UTF_8);
+    }
+    protected static void writeString(DataOutputStream dos, String s) throws IOException {
+        writeVarBytes(dos, s == null ? null : s.getBytes(StandardCharsets.UTF_8));
+    }
+
+    protected void setTimestamp(long ts) { this.timestamp = ts; }
+    public ChainDataType getType() { return type; }
+
+    // 抽象方法：子类必须自己实现完整性校验！
+    public abstract boolean verifyIntegrity();
+
+
+    // 加到 AbstractQubeData.java 中（所有子类都能用）
+    public byte[] getSenderPubKey() {
+        return senderPubKey != null ? senderPubKey.clone() : new byte[0];
     }
 }

@@ -2,21 +2,18 @@
 package org.example.core.container;
 
 
-import org.example.core.QubeBlock;
+import org.example.core.block.QubeBlock;
 import org.example.core.TimestampUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import org.example.core.QubeBlock;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class Container {
+public class Container implements AutoCloseable {
 
     private ContainerHead head;
     private List<ContainerIndexEntry> indexList;
@@ -153,6 +150,9 @@ public class Container {
         raf.writeLong(head.indexLength);          // 8 bytes
         raf.write(head.reserved);                 // 填充固定大小
     }
+    public ContainerHead getHead(){
+        return head;
+    }
 
     private ContainerHead readHead(RandomAccessFile raf) throws IOException {
         ContainerHead h = new ContainerHead();
@@ -195,7 +195,8 @@ public class Container {
         return list;
     }
 
-    private byte[] computeContainerHash() {
+    //容器完成数据写入
+    public byte[] computeContainerHash() {
         try (RandomAccessFile r = new RandomAccessFile(filePath, "r")) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[1024*1024];

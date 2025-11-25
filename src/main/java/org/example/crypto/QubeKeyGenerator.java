@@ -19,6 +19,7 @@ public class QubeKeyGenerator {
         public final String address;       // Q开头Base58地址
         public final String privateKeyHex;
         public final String publicKeyHex;
+
         public final DilithiumPrivateKeyParameters privateKeyParameters;
 
         Wallet(String address, String privateKey, String publicKey,DilithiumPrivateKeyParameters privateKeyParameters) {
@@ -26,6 +27,7 @@ public class QubeKeyGenerator {
             this.privateKeyHex = privateKey;
             this.publicKeyHex = publicKey;
             this.privateKeyParameters=privateKeyParameters;
+
         }
     }
 
@@ -36,17 +38,18 @@ public class QubeKeyGenerator {
 
         DilithiumPublicKeyParameters pubKey = (DilithiumPublicKeyParameters) kp.getPublic();
         DilithiumPrivateKeyParameters privKey = (DilithiumPrivateKeyParameters) kp.getPrivate();
-        System.out.println("rho length: " + privKey.getRho().length);
+        System.out.println("你真正使用的参数是: " + privKey.getParameters().getName());
+      /*  System.out.println("rho length: " + privKey.getRho().length);
         System.out.println("k length: " + privKey.getK().length);
         System.out.println("tr length: " + privKey.getTr().length);
         System.out.println("s1 length: " + privKey.getS1().length);
         System.out.println("s2 length: " + privKey.getS2().length);
         System.out.println("t0 length: " + privKey.getT0().length);
-        System.out.println("t1 length: " + privKey.getT1().length);
+        System.out.println("t1 length: " + privKey.getT1().length);*/
         //System.out.println("私钥对象集合参数:"+privKey.getParameters().);
         //String privHex = Hex.toHexString(privKey.getEncoded());
 
-        String privHex= Hex.toHexString(getRawPrivateKeyBytes(privKey));
+        String privHex= Hex.toHexString(privKey.getEncoded());
         String pubHex = Hex.toHexString(pubKey.getEncoded());
 
         //byte[] pubBytes = Hex.decode(pubHex);
@@ -61,9 +64,10 @@ public class QubeKeyGenerator {
         byte[] binaryAddr = new byte[25];
         System.arraycopy(versioned, 0, binaryAddr, 0, 21);
         System.arraycopy(checksum, 0, binaryAddr, 21, 4);
-        String base58 = base58Encode(checksum);
+        String base58 = base58Encode(binaryAddr);
         String address = "Q" + base58;        // 可选 Q 前缀
         System.out.println("抗量子钱包生成成功！");
+        System.out.println("公钥匙长度: " + pubHex.length() + ")字节长度:"+pubKey.getEncoded().length);
         System.out.println("地址: " + address + " (长度: " + address.length() + ")");
         System.out.println("私钥长度: " + privHex.length() + "... (测试阶段打印，上线必须加密私钥长度:)"+ privKey.getEncoded().length);
         return new Wallet(address, privHex, pubHex,privKey);
