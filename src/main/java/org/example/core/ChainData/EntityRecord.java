@@ -20,8 +20,8 @@ public final class EntityRecord extends AbstractQubeData {
 
     public EntityRecord(String entityType, String entityId, String name,
                         JSONObject attributes,
-                        long feeAmount, byte[] pubKey, byte[] signature) {
-        super(ChainDataType.ENTITY, feeAmount, pubKey, signature);
+                        long feeAmount, byte[] pubKey, byte[] signature,byte[] contractAddress) {
+        super(ChainDataType.ENTITY, feeAmount, pubKey, signature,contractAddress);
         this.entityType = entityType;
         this.entityId = entityId;
         this.name = name;
@@ -79,9 +79,15 @@ public final class EntityRecord extends AbstractQubeData {
         byte[] pubKey = readVarBytes(dis);
         byte[] sig = readVarBytes(dis);
         dis.readNBytes(32); // hash
+
+        byte[] contractAddress = readVarBytes(dis);
+        if (contractAddress.length == 0) {
+            throw new IOException("反序列化时发现 contractAddress 为空！");
+        }
+
         int payloadLen = dis.readInt();
 
-        EntityRecord r = new EntityRecord("", "", "", new JSONObject(), fee, pubKey, sig);
+        EntityRecord r = new EntityRecord("", "", "", new JSONObject(), fee, pubKey, sig,contractAddress);
         r.setTimestamp(ts);
 
         byte[] payload = new byte[payloadLen];

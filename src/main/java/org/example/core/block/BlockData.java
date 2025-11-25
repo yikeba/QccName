@@ -41,20 +41,15 @@ public final class BlockData implements Serializable {
         return new BlockData();
     }
 
-    // ====================== 2. 流式添加记录（生产核心！）======================
     public synchronized void addRecord(AbstractQubeData record) {
         if (sealed) throw new IllegalStateException("BlockData 已封块，不可添加");
-        if (record == null) throw new IllegalArgumentException("记录不能为 null");
         try {
-            byte[] bytes = record.toByteArray();
-            rawBytes.writeBytes(bytes);
-            // 收集地址
+            byte[] wrapped = record.toRecordBytes();  // ⭐ 包含长度字段
+            rawBytes.writeBytes(wrapped);
+
             involvedAddresses.add(record.getSenderPubKey());
-            if (record instanceof TradeRecord trade) {
-                String to = trade.getTo();
-                if (to != null && !to.isEmpty()) {
-                    involvedAddresses.add(to.getBytes(StandardCharsets.UTF_8));
-                }
+            if (record instanceof TradeRecord t && t.getTo() != null) {
+                involvedAddresses.add(t.getTo().getBytes(StandardCharsets.UTF_8));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -134,18 +129,21 @@ public final class BlockData implements Serializable {
     public String toString() { return toAuditString(); }
 
 
-    // 正确写法！（你赢了！）
-    public void loadFromBytes(byte[] rawBytes) throws IOException {
-        if (sealed) throw new IllegalStateException("已封块不能加载");
-        if (rawBytes == null || rawBytes.length == 0) return;
+    public void loadFromBytes(byte[] bytes) throws IOException {
+        records.clear();
 
-        int offset = 0;
-        while (offset < rawBytes.length) {
-            AbstractQubeData record = AbstractQubeData.parseFrom(
-                    Arrays.copyOfRange(rawBytes, offset, rawBytes.length)
-            );
-            this.addRecord(record);  // 直接用 this！
-            offset += record.toByteArray().length;
+        DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes));
+        while (dis.available() > 0) {
+
+            int len = dis.readInt();         // ⭐ 读取记录长度
+            if (len <= 0) throw new IOException("检测到非法记录长度 " + len);
+
+            byte[] recBytes = new byte[len];
+            dis.readFully(recBytes);         // ⭐ 读取 Record 原始数据
+
+            AbstractQubeData record = AbstractQubeData.parseFrom(recBytes);
+            records.add(record);
         }
     }
+
 }

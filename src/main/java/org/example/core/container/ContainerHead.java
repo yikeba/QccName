@@ -1,7 +1,7 @@
 package org.example.core.container;
 
 
-public class ContainerHead {
+public class uiContainerHead {
 
     public static final int FIXED_SIZE = 256; // 固定头大小
 

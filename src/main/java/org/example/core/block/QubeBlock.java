@@ -49,32 +49,21 @@ public final class QubeBlock implements Serializable {
             if (!data.isSealed()) {
                 data.seal();  // 自动封块
             }
-
-            // 计算 Foot（单次 SHA256 —— 你赢了！）
+            // 计算 Foot（单次 SHA256）
             byte[] headBytes = head.toBytes();
             byte[] dataBytes = data.getRawBytes();
-            byte[] combined = new byte[headBytes.length + dataBytes.length];
-            System.arraycopy(headBytes, 0, combined, 0, headBytes.length);
-            System.arraycopy(dataBytes, 0, combined, headBytes.length, dataBytes.length);
-
-            byte[] hash = CryptoUtil.sha256(combined);  // 单次！干净！现代！
-            String currentHash = CryptoUtil.bytesToHex(hash);
-            BlockFoot foot = new BlockFoot(currentHash);
-
+            BlockFoot foot = BlockFoot.create(headBytes, dataBytes);
             return new QubeBlock(head, data, foot);
+
         }
     }
 
     // ====================== 完整性验证（最硬核！）======================
+    // ====================== 完整性验证（最硬核！）======================
     public boolean verifyIntegrity() {
         byte[] headBytes = head.toBytes();
         byte[] dataBytes = data.getRawBytes();
-        byte[] combined = new byte[headBytes.length + dataBytes.length];
-        System.arraycopy(headBytes, 0, combined, 0, headBytes.length);
-        System.arraycopy(dataBytes, 0, combined, headBytes.length, dataBytes.length);
-
-        byte[] expected = CryptoUtil.sha256(combined);
-        return foot.getCurrentHash().equals(CryptoUtil.bytesToHex(expected));
+        return foot.verify(headBytes, dataBytes);
     }
 
     // ====================== 序列化：落盘专用 ======================
@@ -92,35 +81,51 @@ public final class QubeBlock implements Serializable {
 
     // ====================== 反序列化：从 byte[] 完整还原 ======================
     public static QubeBlock fromBytes(byte[] bytes) throws IOException {
-        if (bytes.length < 96 + 72) throw new IOException("区块数据太短");
 
-        // 1. 解析 Head（固定96字节）
+        // ==================== 1. 基本长度校验 ====================
+        if (bytes == null || bytes.length < 96 + BlockFoot.FIXED_SIZE) {
+            throw new IOException("区块数据太短：不足以包含 Head + Foot");
+        }
+
+        // ==================== 2. 解析 BlockHead（固定 96 字节） ====================
         byte[] headBytes = new byte[96];
         System.arraycopy(bytes, 0, headBytes, 0, 96);
         BlockHead head = BlockHead.fromBytes(headBytes);
 
-        // 2. 解析 Data（根据 Head 里的 dataAreaSize）
+        // ==================== 3. 解析 BlockData ====================
         int dataSize = head.getDataAreaSize();
+        if (96 + dataSize + BlockFoot.FIXED_SIZE > bytes.length) {
+            throw new IOException("区块数据损坏：dataAreaSize 越界");
+        }
+
         byte[] dataBytes = new byte[dataSize];
         System.arraycopy(bytes, 96, dataBytes, 0, dataSize);
-        BlockData data = BlockData.createEmpty();
-        data.loadFromBytes(dataBytes);  // 完美！
 
-        // 3. 解析 Foot（剩余部分）
-        byte[] footBytes = new byte[72];
-        System.arraycopy(bytes, 96 + dataSize, footBytes, 0, 72);
+        BlockData data = BlockData.createEmpty();
+        data.loadFromBytes(dataBytes);
+
+        // ==================== 4. 解析 BlockFoot（固定 40 字节） ====================
+        byte[] footBytes = new byte[BlockFoot.FIXED_SIZE];
+        System.arraycopy(bytes, 96 + dataSize, footBytes, 0, BlockFoot.FIXED_SIZE);
+
         BlockFoot foot = BlockFoot.fromBytes(footBytes);
 
+        // ==================== 5. 创建区块对象 ====================
         QubeBlock block = new QubeBlock(head, data, foot);
+
+        // ==================== 6. 完整性校验 ====================
         if (!block.verifyIntegrity()) {
             throw new IOException("区块完整性校验失败！数据被篡改！");
         }
+
         return block;
     }
 
     // ====================== 上交索引（封块后调用）======================
     public int getBlockNumber() { return head.getBlockNumber(); }
+
     public String getCurrentHash() { return foot.getCurrentHash(); }
+
     public Set<byte[]> getInvolvedAddresses() { return data.getInvolvedAddresses(); }
 
     // ====================== 可视化 ======================

@@ -66,7 +66,7 @@ public class Container implements AutoCloseable {
             entry.height = block.getBlockNumber();
             entry.offset = offset;
             entry.length = blockBytes.length;
-            entry.blockHash = block.getHashBytes();
+            entry.blockHash = block.getCurrentHash().getBytes();
             indexList.add(entry);
 
         } catch (IOException e) {

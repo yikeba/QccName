@@ -33,9 +33,11 @@ public final class RuleRecord extends AbstractQubeData {
                       List<String> parties,
                       long feeAmount,
                       byte[] senderPubKey,
-                      byte[] signature) {
+                      byte[] signature,
+                      byte[] contractAddress
+                      ) {
 
-        super(ChainDataType.RULE, feeAmount, senderPubKey, signature);
+        super(ChainDataType.RULE, feeAmount, senderPubKey, signature,contractAddress);
 
         this.ruleType = ruleType != null ? ruleType : "custom";
         this.title = title != null ? title : "";
@@ -90,26 +92,44 @@ public final class RuleRecord extends AbstractQubeData {
 
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
 
-        // 跳过头部（已由 AbstractQubeData.parseFrom 验证过）
         dis.readByte();  // typeId
         long timestamp = dis.readLong();
         long feeAmount = dis.readLong();
         byte[] pubKey = readVarBytes(dis);
         byte[] signature = readVarBytes(dis);
-        dis.readNBytes(32); // payloadHash
+
+        // ⭐ 保存 payloadHash 到父类字段 originalPayloadHash
+        byte[] hash = new byte[32];
+        dis.readFully(hash);
+
+        // ⭐ 正确顺序：contractAddress MUST be here
+        byte[] contractAddress = readVarBytes(dis);
+        if (contractAddress.length == 0) {
+            throw new IOException("反序列化时发现 contractAddress 为空！");
+        }
+
         int payloadLen = dis.readInt();
 
-        // 创建空壳对象
-        RuleRecord record = new RuleRecord(null, null, null, 0, 0, null, feeAmount, pubKey, signature);
-        record.setTimestamp(timestamp);
+        RuleRecord record = new RuleRecord(
+                null, null, null,
+                0, 0,
+                null,
+                feeAmount,
+                pubKey,
+                signature,
+                contractAddress
+        );
 
-        // 解析业务数据
+        record.setTimestamp(timestamp);
+        record.originalPayloadHash = hash; // ⭐ 必须补上
+
         byte[] payload = new byte[payloadLen];
         dis.readFully(payload);
         record.deserializePayload(new DataInputStream(new ByteArrayInputStream(payload)));
 
         return record;
     }
+
 
     @Override
     public boolean verifyIntegrity() {

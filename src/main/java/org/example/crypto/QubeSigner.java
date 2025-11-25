@@ -2,6 +2,7 @@ package org.example.crypto;
 
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
+import org.bouncycastle.crypto.params.AsymmetricKeyParameter;
 import org.bouncycastle.crypto.util.PrivateKeyFactory;
 import org.bouncycastle.pqc.crypto.crystals.dilithium.*;
 import org.bouncycastle.util.encoders.Hex;
@@ -26,12 +27,13 @@ public class QubeSigner {
         return Hex.toHexString(signature);
     }
 
-    // 客户用这个！！！从Base64私钥签名
-    public static String sign(String message, String privateKey)  {
-        DilithiumPrivateKeyParameters privKey = DilithiumKeyRestorer.restoreRawPrivateKey(privateKey);
+    public static String sign(String message, String privateKeyHex) {
+        DilithiumPrivateKeyParameters privKey = DilithiumKeyRestorer.restoreRawPrivateKey(privateKeyHex);
         return sign(message, privKey);
 
     }
+
+
 
     // 客户用这个！！！从Base64私钥签名
     public static byte[] signRow(String message, String privateKey)  {

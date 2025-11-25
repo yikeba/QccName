@@ -3,54 +3,57 @@ package org.example.core.block;
 import com.alibaba.fastjson2.JSONObject;
 import org.example.crypto.CryptoUtil;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
- * BlockFoot v1 - 区块尾部（固定 72 字节）
- * 职责：
- *   1. 存储当前区块完整哈希（64字符 hex）
- *   2. 存储结束魔数 "ENDQ"（4字节）
- *   3. 提供校验：传入 (Head + Data) 的哈希，验证是否匹配
+ * BlockFoot v2 - 区块尾部（固定 40 字节）
+ * 结构：
+ *   [0  - 31]  currentHash   区块哈希原始 32 字节
+ *   [32 - 35]  END_MAGIC     固定 "ENDQ"
+ *   [36 - 39]  reserved      预留 4 字节（当前全 0）
  */
 public final class BlockFoot implements Serializable {
 
     @java.io.Serial
     private static final long serialVersionUID = 20251125L;
 
-    private static final byte[] END_MAGIC = "ENDQ".getBytes(StandardCharsets.UTF_8); // 4字节
+    /** 固定魔数 "ENDQ" */
+    private static final byte[] END_MAGIC = "ENDQ".getBytes(StandardCharsets.UTF_8);
 
-    // 当前区块完整哈希：SHA256d(Head + Data) 的 hex 字符串（64字符）
-    private final String currentHash;
+    /** 尾部固定大小：32(hash) + 4(magic) + 4(reserved) */
+    public static final int FIXED_SIZE = 40;
 
+    /** 当前区块完整哈希：SHA256(Head + Data) 的原始 32 字节 */
+    private final byte[] currentHash;
 
-    public BlockFoot(String currentHash) {
+    public BlockFoot(byte[] currentHash) {
         this.currentHash = validateHash(currentHash);
     }
 
-    // ====================== 1. 静态创建（由 QubeBlock 调用）======================
+    // ====================== 1. 创建（由 QubeBlock 调用）======================
     public static BlockFoot create(byte[] headBytes, byte[] dataBytes) {
         byte[] combined = new byte[headBytes.length + dataBytes.length];
         System.arraycopy(headBytes, 0, combined, 0, headBytes.length);
         System.arraycopy(dataBytes, 0, combined, headBytes.length, dataBytes.length);
 
-        byte[] hash = CryptoUtil.sha256(combined);  // 双SHA256
-        String hexHash = bytesToHex(hash);
-        return new BlockFoot(hexHash);
+        byte[] hash = CryptoUtil.sha256(combined);  // 单次 SHA256
+        return new BlockFoot(hash);
     }
 
-    // ====================== 2. 静态解析（从 byte[] 还原）======================
+    // ====================== 2. 反序列化 ======================
     public static BlockFoot fromBytes(byte[] bytes) throws IOException {
-        if (bytes == null || bytes.length < 72) {
-            throw new IOException("BlockFoot 数据不足 72 字节");
+        if (bytes == null || bytes.length < FIXED_SIZE) {
+            throw new IOException("BlockFoot 数据不足 " + FIXED_SIZE + " 字节");
         }
 
-        ByteBuffer buf = ByteBuffer.wrap(bytes);
-        byte[] hashBytes = new byte[64];
+        ByteBuffer buf = ByteBuffer.wrap(bytes, 0, FIXED_SIZE);
+
+        byte[] hashBytes = new byte[32];
         buf.get(hashBytes);
-        String hash = new String(hashBytes, StandardCharsets.UTF_8);
 
         byte[] magic = new byte[4];
         buf.get(magic);
@@ -58,59 +61,75 @@ public final class BlockFoot implements Serializable {
             throw new IOException("BlockFoot 结束魔数错误");
         }
 
-        BlockFoot foot = new BlockFoot(hash);
-        if (!foot.validate()) throw new IOException("BlockFoot 校验失败");
+        // 预留 4 字节当前不使用，但要读过去保持位置一致
+        byte[] reserved = new byte[4];
+        buf.get(reserved);
+
+        BlockFoot foot = new BlockFoot(hashBytes);
+        if (!foot.validate()) {
+            throw new IOException("BlockFoot 校验失败");
+        }
         return foot;
     }
 
-    // ====================== 3. 序列化（固定 72 字节）======================
+    // ====================== 3. 序列化（固定 40 字节） ======================
     public byte[] toBytes() {
-        ByteBuffer buf = ByteBuffer.allocate(72);
-        buf.put(currentHash.getBytes(StandardCharsets.UTF_8));
+        ByteBuffer buf = ByteBuffer.allocate(FIXED_SIZE);
+        buf.put(currentHash);
         buf.put(END_MAGIC);
-        buf.put(new byte[4]); // 预留4字节未来扩展
+        buf.put(new byte[4]); // 预留 4 字节未来扩展
         return buf.array();
     }
 
-    // ====================== 4. 校验：当前哈希是否正确 ======================
+    // ====================== 4. 校验 ======================
     public boolean verify(byte[] headBytes, byte[] dataBytes) {
         byte[] combined = new byte[headBytes.length + dataBytes.length];
         System.arraycopy(headBytes, 0, combined, 0, headBytes.length);
         System.arraycopy(dataBytes, 0, combined, headBytes.length, dataBytes.length);
 
         byte[] expected = CryptoUtil.sha256(combined);
-        return currentHash.equals(bytesToHex(expected));
+        return Arrays.equals(currentHash, expected);
     }
 
     // ====================== 5. 可视化 ======================
     public String toJson() {
         JSONObject json = new JSONObject();
-        json.put("currentHash", currentHash);
+        json.put("currentHash", getCurrentHash()); // 仍然以 hex 展示
         json.put("magic", "ENDQ");
         return json.toString();
     }
 
     public String toAuditString() {
-        return String.format("Foot[hash=%s... %s]", currentHash.substring(0, 16), "ENDQ");
+        String hex = getCurrentHash();
+        return String.format("Foot[hash=%s... %s]", hex.substring(0, 16), "ENDQ");
     }
 
     // ====================== Getter ======================
-    public String getCurrentHash() { return currentHash; }
+
+    /** 对外还是给 64 位 hex，方便日志、索引使用 */
+    public String getCurrentHash() {
+        return bytesToHex(currentHash);
+    }
+
+    /** 原始 32 字节（防止被改，返回拷贝） */
+    public byte[] getCurrentHashBytes() {
+        return currentHash.clone();
+    }
 
     // ====================== 工具方法 ======================
     private boolean validate() {
-        return currentHash.length() == 64 && currentHash.matches("[0-9a-f]{64}");
+        return currentHash != null && currentHash.length == 32;
     }
 
-    private static String validateHash(String h) {
-        if (h == null || h.length() != 64 || !h.matches("[0-9a-f]{64}")) {
-            throw new IllegalArgumentException("BlockFoot hash 必须是 64 字符小写 hex");
+    private static byte[] validateHash(byte[] h) {
+        if (h == null || h.length != 32) {
+            throw new IllegalArgumentException("BlockFoot hash 必须是 32 字节");
         }
-        return h;
+        return h.clone();
     }
 
     private static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
         for (byte b : bytes) {
             sb.append(String.format("%02x", b));
         }
@@ -118,5 +137,7 @@ public final class BlockFoot implements Serializable {
     }
 
     @Override
-    public String toString() { return toAuditString(); }
+    public String toString() {
+        return toAuditString();
+    }
 }

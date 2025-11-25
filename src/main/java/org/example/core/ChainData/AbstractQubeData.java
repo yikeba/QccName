@@ -14,11 +14,13 @@ public abstract class AbstractQubeData {
     protected final long feeAmount;               // 手续费
     protected final byte[] senderPubKey;          // 发送者公钥
     protected final byte[] signature;             // 完整签名
+    protected final byte[] contractAddress;
 
     private transient byte[] payloadHash;          // payload 的 SHA3-256
-    private byte[] originalPayloadHash;  // 原始哈希，来自链上
-    protected AbstractQubeData(ChainDataType type, long feeAmount, byte[] senderPubKey, byte[] signature) {
+    byte[] originalPayloadHash;  // 原始哈希，来自链上
+    protected AbstractQubeData(ChainDataType type, long feeAmount, byte[] senderPubKey, byte[] signature, byte[] contractAddress) {
         this.type = type;
+        this.contractAddress = contractAddress;
         this.timestamp = System.currentTimeMillis();
         this.feeAmount = feeAmount;
         this.senderPubKey = senderPubKey != null ? senderPubKey.clone() : new byte[0];
@@ -33,6 +35,10 @@ public abstract class AbstractQubeData {
     public abstract String toAuditString();   // 必须！给人看！审计必备！
     public abstract String toJSON();          // 必须！给前端看！
 
+
+
+    public byte[] getContractAddress() { return contractAddress; }
+
     // ==================== 全局统一序列化 ====================
     public final byte[] toByteArray() throws IOException {
         byte[] payload = serializePayload();
@@ -46,11 +52,14 @@ public abstract class AbstractQubeData {
             writeVarBytes(dos, senderPubKey);
             writeVarBytes(dos, signature);
             dos.write(payloadHash);
+            // ⭐⭐ 新增：合约地址序列化
+            writeVarBytes(dos, contractAddress);
             dos.writeInt(payload.length);
             dos.write(payload);
             return baos.toByteArray();
         }
     }
+
 
     // 公开 getter，供子类在 verifyIntegrity() 时使用
     protected final byte[] getOriginalPayloadHash() {
@@ -71,6 +80,13 @@ public abstract class AbstractQubeData {
         byte[] sig = readVarBytes(dis);
         byte[] hash = new byte[32];
         dis.readFully(hash);
+
+        // ⭐⭐⭐ 新增：读取 contractAddress
+        byte[] contractAddress = readVarBytes(dis);
+        if (contractAddress.length == 0) {
+            throw new IOException("反序列化时 contractAddress 为空！");
+        }
+
         int len = dis.readInt();
         byte[] payload = new byte[len];
         dis.readFully(payload);
@@ -88,6 +104,17 @@ public abstract class AbstractQubeData {
         record.setTimestamp(timestamp);
         return record;
     }
+
+    /** 带记录长度的序列化（用于写入 BlockData） */
+    public final byte[] toRecordBytes() throws IOException {
+        byte[] core = toByteArray(); // 原本的记录内容（带 typeId, timestamp, sig, payload 等）
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(baos);
+        dos.writeInt(core.length);   // ⭐ 关键：写入记录长度
+        dos.write(core);             // ⭐ 写入记录内容
+        return baos.toByteArray();
+    }
+
 
     // 工具方法
     protected static void writeVarBytes(DataOutputStream dos, byte[] b) throws IOException {

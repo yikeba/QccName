@@ -1,6 +1,7 @@
 package org.example.crypto;
 
 import org.bouncycastle.pqc.crypto.crystals.dilithium.*;
+import org.bouncycastle.pqc.crypto.util.PrivateKeyInfoFactory;
 import org.bouncycastle.util.encoders.Hex;
 
 import java.io.ByteArrayOutputStream;
@@ -39,17 +40,10 @@ public class QubeKeyGenerator {
         DilithiumPublicKeyParameters pubKey = (DilithiumPublicKeyParameters) kp.getPublic();
         DilithiumPrivateKeyParameters privKey = (DilithiumPrivateKeyParameters) kp.getPrivate();
         System.out.println("你真正使用的参数是: " + privKey.getParameters().getName());
-      /*  System.out.println("rho length: " + privKey.getRho().length);
-        System.out.println("k length: " + privKey.getK().length);
-        System.out.println("tr length: " + privKey.getTr().length);
-        System.out.println("s1 length: " + privKey.getS1().length);
-        System.out.println("s2 length: " + privKey.getS2().length);
-        System.out.println("t0 length: " + privKey.getT0().length);
-        System.out.println("t1 length: " + privKey.getT1().length);*/
-        //System.out.println("私钥对象集合参数:"+privKey.getParameters().);
-        //String privHex = Hex.toHexString(privKey.getEncoded());
+        System.out.println("私钥编码长度: " + privKey.getEncoded().length);
+        System.out.println("参数名: " + privKey.getParameters().getName());
 
-        String privHex= Hex.toHexString(privKey.getEncoded());
+        String privHex= Hex.toHexString(getRawPrivateKeyBytes(privKey));  //私钥转换方式，千万不要修改，目前测试 ok
         String pubHex = Hex.toHexString(pubKey.getEncoded());
 
         //byte[] pubBytes = Hex.decode(pubHex);
@@ -57,7 +51,8 @@ public class QubeKeyGenerator {
         byte[] hash160 = ripemd160(sha256);
 
         byte[] versioned = new byte[21];
-        versioned[0] = 0x51; // QubeChain版本字节
+       // versioned[0] = 0x51; // QubeChain版本字节
+        versioned[0] = 0x00; // 改为 0x00（原来是 0x51）
         System.arraycopy(hash160, 0, versioned, 1, 20);
 
         byte[] checksum = sha256(sha256(versioned));

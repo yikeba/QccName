@@ -26,10 +26,10 @@ public class DemoTest {
         String tx = "SALES|merchant:888|amount:88888.88|time:2025-11-22,sdfsdfsdfsdfsdfdfgdfgdgddfg";
 
         // 3. 签名
-        String signature = QubeSigner.sign(tx,wallet.privateKeyParameters);
-
+        //String signature = QubeSigner.sign(tx,wallet.privateKeyParameters);
+        String signature = QubeSigner.sign(tx,wallet.privateKeyHex);
         // 4. 验证
-       // boolean validstr = QubeSigner.verify(tx, signature, wallet.publicKeyHex);
+        //boolean valid = QubeSigner.verify(tx, signature, wallet.publicKeyHex);
         boolean valid = QubeSigner.verifyRaw(tx.getBytes(),  Hex.decode(signature), wallet.publicKeyHex);
         System.out.println("\n交易内容: " + tx);
        // System.out.println("签名: " + signature+"签名长度："+signature.length());
