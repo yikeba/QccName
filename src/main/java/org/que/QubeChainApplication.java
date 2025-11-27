@@ -1,5 +1,7 @@
 package org.que;   // 你现在的包名保持不变
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONWriter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.que.config.QubePath;
 import org.springframework.boot.SpringApplication;
@@ -24,6 +26,8 @@ public class QubeChainApplication {
         // 注意：请确认您使用的是 BouncyCastleProvider.PROVIDER_NAME
         // 或者直接使用 "BC" 字符串，但 BouncyCastleProvider.PROVIDER_NAME 更安全。
     }
+
+
 
     public static void main(String[] args) {
         QubePath.init(); // 就这一行！！！所有路径搞定！！！

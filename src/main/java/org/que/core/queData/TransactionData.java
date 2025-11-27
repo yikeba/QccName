@@ -1,24 +1,39 @@
 package org.que.core.queData;
 
-
-import org.que.crypto.QubeSigner;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.annotation.JSONField;
 import org.bouncycastle.pqc.crypto.crystals.dilithium.DilithiumPrivateKeyParameters;
+import org.que.crypto.QubeSigner;
 
 /**
  * 交易数据（Transaction）
- * 金额统一采用 int（两位小数：100 = 1.00）
  */
 public class TransactionData extends QueBaseData {
 
     private static final String TYPE = "transaction";
+    private static final int MEMO_MAX_LEN = 30;
 
-    public String from;        // Qxxxx 发送方地址
-    public String to;          // Qxxxx 接收方地址
-    public int amount;         // 金额（最小单位 ×100，例如 1.00 = 100）
+    // ===== 固定字段顺序（用于 JSON → Byte 协议） =====
 
-    public String publicKey;   // 发送方公钥 HEX
-    public String signature;   // 对 payload 的签名
+    @JSONField(ordinal  = 5, name = "from")
+    public String from;
 
+    @JSONField(ordinal  = 6, name = "to")
+    public String to;
+
+    @JSONField(ordinal  = 7, name = "amount")
+    public int amount;
+
+    @JSONField(ordinal  = 8, name = "memo")
+    public String memo;
+
+    @JSONField(ordinal  = 9, name = "publicKey")
+    public String publicKey;
+
+    @JSONField(ordinal  = 10, name = "signature")
+    public String signature;
+
+    // ===== 构造 =====
     public TransactionData(String contractAddress) {
         initBaseFields(contractAddress);
     }
@@ -28,32 +43,36 @@ public class TransactionData extends QueBaseData {
         return TYPE;
     }
 
-    /**
-     * 签名专用字符串（确定性、统一格式）
-     * 不可随意改变结构！
-     */
-    @Override
-    public String getSignPayload() {
-        return id + "|" + contractAddress + "|" + from + "|" + to + "|" + amount;
-
+    private void checkMemo() {
+        if (memo == null) return;
+        if (memo.length() > MEMO_MAX_LEN) {
+            throw new IllegalArgumentException("Transaction memo 最大长度为 "
+                    + MEMO_MAX_LEN + " 字符，当前=" + memo.length());
+        }
     }
 
-    /**
-     * 用发送方私钥签名
-     */
+    @Override
+    public String getSignPayload() {
+        checkMemo();
+        return id + "|" + contractAddress + "|" + from + "|" + to + "|" + amount + "|" +
+                (memo == null ? "" : memo);
+    }
+
     public void sign(DilithiumPrivateKeyParameters privKey) {
         this.signature = QubeSigner.sign(getSignPayload(), privKey);
     }
 
-    /**
-     * 使用发送方公钥验证签名
-     */
     public boolean verify() {
         return QubeSigner.verify(
                 getSignPayload(),
                 signature,
                 publicKey
         );
+    }
+
+    public double getFee() {
+        double memoCost = (memo == null || memo.isEmpty()) ? 0.0 : 0.01;
+        return memoCost;
     }
 
     @Override
@@ -64,11 +83,15 @@ public class TransactionData extends QueBaseData {
                 ", from='" + from + '\'' +
                 ", to='" + to + '\'' +
                 ", amount=" + amount +
+                ", memo='" + memo + '\'' +
                 ", publicKey='" + publicKey + '\'' +
                 ", signature='" + signature + '\'' +
                 ", timestamp=" + timestamp +
+                ", fee=" + getFee() +
                 '}';
     }
 
+    public String toJsonString() {
+        return JSON.toJSONString(this);
+    }
 }
-

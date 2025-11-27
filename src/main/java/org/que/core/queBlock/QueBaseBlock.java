@@ -69,7 +69,8 @@ public class QueBaseBlock implements Serializable {
     public String toJson() {
         JSONWriter writer = JSONWriter.of(
                 JSONWriter.Feature.WriteMapNullValue,
-                JSONWriter.Feature.NotWriteDefaultValue
+                JSONWriter.Feature.NotWriteDefaultValue,
+                JSONWriter.Feature.FieldBased           // ← 新加！红线消失
         );
         writer.writeAny(this);
         return writer.toString();

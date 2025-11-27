@@ -1,6 +1,7 @@
 package org.que.core.queData;
 
-
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.annotation.JSONField;   // 必须导入！
 import org.que.crypto.QubeSigner;
 import org.bouncycastle.pqc.crypto.crystals.dilithium.DilithiumPrivateKeyParameters;
 
@@ -12,13 +13,13 @@ public class RuleData extends QueBaseData {
 
     private static final String TYPE = "rule";
 
-    public String ruleCode;      // 规则编号（唯一）
-    public String description;   // 规则描述（明文或JSON）
-    public String publicKey;     // 发布者公钥（决定验证签名）
-    public String signature;     // 签名
+    @JSONField(ordinal = 5)  public String ruleCode;      // 第5位
+    @JSONField(ordinal = 6)  public String description;   // 第6位
+    @JSONField(ordinal = 7)  public String publicKey;     // 第7位
+    @JSONField(ordinal = 8)  public String signature;    // 第8位
 
     public RuleData(String contractAddress) {
-        initBaseFields(contractAddress); // 初始化 id 和 timestamp
+        initBaseFields(contractAddress);
     }
 
     @Override
@@ -27,31 +28,19 @@ public class RuleData extends QueBaseData {
     }
 
     /**
-     * 规则数据的固定签名内容
-     * 必须保持确定性
+     * 规则数据的固定签名内容（必须保持确定性）
      */
     @Override
     public String getSignPayload() {
-        return id +"|"+ contractAddress +"|"+ ruleCode +"|"+ description;
-
+        return id + "|" + contractAddress + "|" + ruleCode + "|" + description;
     }
 
-    /**
-     * 使用发布者私钥进行签名
-     */
     public void sign(DilithiumPrivateKeyParameters privKey) {
         this.signature = QubeSigner.sign(getSignPayload(), privKey);
     }
 
-    /**
-     * 使用发布者公钥验证签名
-     */
     public boolean verify() {
-        return QubeSigner.verify(
-                getSignPayload(),
-                signature,
-                publicKey
-        );
+        return QubeSigner.verify(getSignPayload(), signature, publicKey);
     }
 
     @Override
@@ -66,5 +55,7 @@ public class RuleData extends QueBaseData {
                 ", timestamp=" + timestamp +
                 '}';
     }
-
+    public String toJsonString() {
+        return JSON.toJSONString(this);
+    }
 }

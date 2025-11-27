@@ -1,19 +1,27 @@
 package org.que.core.queData;
-
+import com.alibaba.fastjson2.annotation.JSONField;
 import java.util.UUID;
-
 public abstract class QueBaseData {
-    /** 每条数据的唯一 ID（你之后会对这部分做签名） */
+    @JSONField(ordinal = 1, name = "id")
     protected String id;
-    /** 数据生成时间戳（ms） */
+    @JSONField(ordinal = 2, name = "timestamp")
     protected long timestamp;
-    /** 返回数据类型：transaction / entity / rule */
-    public abstract String getType();
-    protected String contractAddress; // ★ 所属合约地址
+    @JSONField(ordinal  = 3, name = "type")
+    protected String type;
+    @JSONField(ordinal  = 4, name = "contractAddress")
+    protected String contractAddress;
+   /* *//** 每条数据的唯一 ID（你之后会对这部分做签名） *//*
+    protected String id;
+    *//** 数据生成时间戳（ms） *//*
+    protected long timestamp;
+    *//** 返回数据类型：transaction / entity / rule *//*
+
+    protected String contractAddress; // ★ 所属合约地址*/
     /** 获取 ID */
     public String getId() {
         return id;
     }
+    public abstract String getType();
     /** 获取时间戳 */
     public long getTimestamp() {
         return timestamp;
@@ -24,6 +32,7 @@ public abstract class QueBaseData {
     protected void initBaseFields(String contractAddress) {
         this.id = UUID.randomUUID().toString().replace("-", "");
         this.timestamp = System.currentTimeMillis();
+        this.type = getType();   // 🔥🔥🔥 关键：自动写入 type！
         this.contractAddress = contractAddress;
     }
 

@@ -1,6 +1,8 @@
 package org.que.protocol;
 
 import org.bouncycastle.pqc.crypto.crystals.dilithium.DilithiumPrivateKeyParameters;
+import org.que.core.queData.QubeDataBaseFactory;
+import org.que.core.queData.QueBaseData;
 import org.que.crypto.QubeAddressUtil;
 import org.que.crypto.QubeSigner; // 假设这是您前面提到的包含 signRaw 和 verifyRaw 的类
 
@@ -44,6 +46,23 @@ public class QubePacket {
         this.payload = payload;
         this.serverTime = 0L;
         this.signature = null;
+    }
+
+
+    public static QubePacket buildFromData(QueBaseData data,
+                                           byte[] publicKey,
+                                           DilithiumPrivateKeyParameters privKey) {
+
+        String json = QubeDataBaseFactory.toJson(data);
+        byte[] payload = json.getBytes(StandardCharsets.UTF_8);
+
+        long now = System.currentTimeMillis();
+        long nonce = System.nanoTime();
+
+        QubePacket packet = new QubePacket(publicKey, now, nonce, payload);
+        packet.sign(privKey);
+
+        return packet;
     }
 
     /** 签名（使用私钥对象） */

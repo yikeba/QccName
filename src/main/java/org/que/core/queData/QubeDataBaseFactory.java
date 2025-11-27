@@ -17,9 +17,8 @@ public class QubeDataBaseFactory {
     public static String toJson(QueBaseData data) {
         JSONWriter writer = JSONWriter.of(
                 JSONWriter.Feature.WriteMapNullValue,   // 写 null
-                JSONWriter.Feature.NotWriteDefaultValue // 不写默认值
-                // ❌ 不要 FieldOrder（不存在）
-                // ❌ 不要 OrderedField（旧版本）
+                JSONWriter.Feature.NotWriteDefaultValue, // 不写默认值
+                JSONWriter.Feature.FieldBased     // 关键！强制用字段模式，所有 protected 注解生效
         );
         writer.writeAny(data);
         return writer.toString();
@@ -29,7 +28,8 @@ public class QubeDataBaseFactory {
 
         JSONWriter writer = JSONWriter.of(
                 JSONWriter.Feature.WriteMapNullValue,
-                JSONWriter.Feature.NotWriteDefaultValue
+                JSONWriter.Feature.NotWriteDefaultValue,
+                JSONWriter.Feature.FieldBased           // ← 新加！
         );
 
         writer.startArray();
@@ -49,7 +49,7 @@ public class QubeDataBaseFactory {
     public static QueBaseData fromJson(String json) {
         JSONObject obj = JSON.parseObject(json);
         String type = obj.getString("type");
-
+        System.out.println("解析数据对象类型数据内容:"+json);
         if ("transaction".equals(type)) {
             return JSON.parseObject(json, TransactionData.class);
         }
