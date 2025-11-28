@@ -13,10 +13,10 @@ public class RuleData extends QueBaseData {
 
     private static final String TYPE = "rule";
 
-    @JSONField(ordinal = 5)  public String ruleCode;      // 第5位
-    @JSONField(ordinal = 6)  public String description;   // 第6位
-    @JSONField(ordinal = 7)  public String publicKey;     // 第7位
-    @JSONField(ordinal = 8)  public String signature;    // 第8位
+    @JSONField(ordinal = 6)  public String ruleCode;      // 第5位
+    @JSONField(ordinal = 7)  public String description;   // 第6位
+    @JSONField(ordinal = 8)  public String publicKey;     // 第7位
+    @JSONField(ordinal = 9)  public String signature;    // 第8位
 
     public RuleData(String contractAddress) {
         initBaseFields(contractAddress);

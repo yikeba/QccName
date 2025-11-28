@@ -1,6 +1,7 @@
 package org.que.core.quecontainer;
 
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 容器区块索引项（含查询优化）
@@ -53,12 +54,21 @@ public class QueContainerIndexEntry implements Serializable {
      * （Bloom Filter 原理：可能包含 / 一定不包含）
      */
     public boolean containsAddress(String address) {
-        if (bloomFilter == null || address == null) return false;
+        if (bloomFilter == null || address == null || address.length() < 10) return false;
 
-        // 简单方案：Bloom Filter 字符串包含地址特征（例如前4字符）
-        String key = address.substring(0, Math.min(address.length(), 6)); // 取前 6 位增强唯一性
-
-        return bloomFilter.contains(key);
+        long hash = QueContainerWriter.murmurHash64(address.getBytes(StandardCharsets.UTF_8));
+        for (int i = 0; i < QueContainerWriter.BLOOM_HASHES; i++) {
+            long mixed = hash + QueContainerWriter.MURMUR_SEEDS[i];
+            int pos = (int) (Math.abs(mixed) % QueContainerWriter.BLOOM_BITS);
+            int hexIdx = pos >> 2;
+            int bitIdx = pos & 3;
+            if (hexIdx >= bloomFilter.length()) return false;
+            int hexVal = Character.digit(bloomFilter.charAt(hexIdx), 16);
+            if (hexVal < 0 || (hexVal & (1 << bitIdx)) == 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override

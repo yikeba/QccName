@@ -12,10 +12,10 @@ public class EntityData extends QueBaseData {
 
     private static final String TYPE = "entity";
 
-    @JSONField(ordinal = 5)  public String owner;        // 第5位
-    @JSONField(ordinal = 6)  public String content;      // 第6位
-    @JSONField(ordinal = 7)  public String publicKey;    // 第7位
-    @JSONField(ordinal = 8)  public String signature;   // 第8位
+    @JSONField(ordinal = 6)  public String owner;        // 第5位
+    @JSONField(ordinal = 7)  public String content;      // 第6位
+    @JSONField(ordinal = 8)  public String publicKey;    // 第7位
+    @JSONField(ordinal = 9)  public String signature;   // 第8位
 
     public EntityData(String contractAddress) {
         initBaseFields(contractAddress);

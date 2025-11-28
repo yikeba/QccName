@@ -13,24 +13,30 @@ public class TransactionData extends QueBaseData {
     private static final String TYPE = "transaction";
     private static final int MEMO_MAX_LEN = 30;
 
+    // === 手续费配置：统一 long，单位：nanoQUBE（最小单位） ===
+    // 假设：1 QUBE = 1_0000_0000 nanoQUBE（你可以以后统一改）
+    private static final long BASE_FEE_NANO       = 0L;          // 基础手续费
+    private static final long MEMO_EXTRA_FEE_NANO = 1_000_000L;  // 有 memo 时额外收 0.01 QUBE 就等你以后换算
+
+
     // ===== 固定字段顺序（用于 JSON → Byte 协议） =====
 
-    @JSONField(ordinal  = 5, name = "from")
+    @JSONField(ordinal  = 6, name = "from")
     public String from;
 
-    @JSONField(ordinal  = 6, name = "to")
+    @JSONField(ordinal  = 7, name = "to")
     public String to;
 
-    @JSONField(ordinal  = 7, name = "amount")
-    public int amount;
+    @JSONField(ordinal  = 8, name = "amount")
+    public long amount;
 
-    @JSONField(ordinal  = 8, name = "memo")
+    @JSONField(ordinal  = 9, name = "memo")
     public String memo;
 
-    @JSONField(ordinal  = 9, name = "publicKey")
+    @JSONField(ordinal  = 10, name = "publicKey")
     public String publicKey;
 
-    @JSONField(ordinal  = 10, name = "signature")
+    @JSONField(ordinal  = 11, name = "signature")
     public String signature;
 
     // ===== 构造 =====
@@ -49,6 +55,14 @@ public class TransactionData extends QueBaseData {
             throw new IllegalArgumentException("Transaction memo 最大长度为 "
                     + MEMO_MAX_LEN + " 字符，当前=" + memo.length());
         }
+    }
+
+    public long calcFee() {
+        long fee = BASE_FEE_NANO;
+        if (memo != null && !memo.isEmpty()) {
+            fee += MEMO_EXTRA_FEE_NANO;
+        }
+        return fee;
     }
 
     @Override
@@ -70,9 +84,12 @@ public class TransactionData extends QueBaseData {
         );
     }
 
-    public double getFee() {
-        double memoCost = (memo == null || memo.isEmpty()) ? 0.0 : 0.01;
-        return memoCost;
+    public long getFee() {
+        long fee = BASE_FEE_NANO;
+        if (memo != null && !memo.isEmpty()) {
+            fee += MEMO_EXTRA_FEE_NANO;
+        }
+        return fee;
     }
 
     @Override

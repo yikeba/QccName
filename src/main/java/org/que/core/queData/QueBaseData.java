@@ -10,13 +10,16 @@ public abstract class QueBaseData {
     protected String type;
     @JSONField(ordinal  = 4, name = "contractAddress")
     protected String contractAddress;
-   /* *//** 每条数据的唯一 ID（你之后会对这部分做签名） *//*
-    protected String id;
-    *//** 数据生成时间戳（ms） *//*
-    protected long timestamp;
-    *//** 返回数据类型：transaction / entity / rule *//*
+    @JSONField(ordinal = 5, name = "fee")
+    protected long fee;
 
-    protected String contractAddress; // ★ 所属合约地址*/
+    public long getFee() {
+        return fee;
+    }
+
+    public void setFee(long fee) {
+        this.fee = fee;
+    }
     /** 获取 ID */
     public String getId() {
         return id;
