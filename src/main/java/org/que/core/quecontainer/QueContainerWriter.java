@@ -109,8 +109,6 @@ public class QueContainerWriter {
             0x4f7dd381L, 0x2e6a9b7fL, 0x8c7f3d9dL
     };
 
-
-
     private static String buildBloomFilter(QueBaseBlock block) {
         boolean[] bits = new boolean[BLOOM_BITS];
 
@@ -124,7 +122,7 @@ public class QueContainerWriter {
             }
             else if (data instanceof RuleData rd) {
                 // RuleData 建议加入 ruleCode 或发布者地址
-                if (rd.ruleCode != null) addToBloom(bits, rd.ruleCode);
+               // if (rd.ruleCode != null) addToBloom(bits, rd.ruleCode);
                 // 可选：addToBloom(bits, rd.contractAddress);
             }
         });

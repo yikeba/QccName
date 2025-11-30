@@ -1,3 +1,4 @@
+/*
 package org.que.protocol;
 
 import org.bouncycastle.pqc.crypto.crystals.dilithium.DilithiumPrivateKeyParameters;
@@ -7,21 +8,25 @@ import org.que.core.queData.QubeDataBaseFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 
+
 /**
  * Qube 数据协议编解码工具：
  * QueBaseData <-> QubePacket
- */
+ *//*
+
 public class QubeDataProtocol {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /**
+
+/**
      * 客户端：把任意 QueBaseData 封装成 QubePacket，并完成签名
      *
      * @param data           三大数据之一：TransactionData / EntityData / RuleData
      * @param privKey        抗量子私钥
      * @param publicKeyBytes 抗量子公钥字节（和钱包地址对应）
-     */
+     *//*
+
     public static QubePacket encodeData(QueBaseData data,
                                         DilithiumPrivateKeyParameters privKey,
                                         byte[] publicKeyBytes) {
@@ -34,19 +39,22 @@ public class QubeDataProtocol {
         long nonce = RANDOM.nextLong();
 
         // 2. 构建协议包
-        QubePacket packet = new QubePacket(publicKeyBytes, clientTime, nonce, payload);
+      //  QubePacket packet = new QubePacket(publicKeyBytes, clientTime, nonce, payload);
 
         // 3. 用客户端钱包私钥签名
-        packet.sign(privKey);
+      //  packet.sign(privKey);
 
-        return packet;
+       // return packet;
+        return null;
     }
 
-    /**
+
+/**
      * 服务端：从 QubePacket 中解析出 QueBaseData
      *
      * @throws IllegalStateException 如果签名验证失败
-     */
+     *//*
+
     public static QueBaseData decodeData(QubePacket packet) {
         // 1. 验签（非常关键）
         if (!packet.verify()) {

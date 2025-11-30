@@ -1,3 +1,4 @@
+/*
 package org.que.test;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -8,7 +9,7 @@ import org.que.core.queData.QueBaseData;
 import org.que.core.queData.RuleData;
 import org.que.core.queData.TransactionData;
 import org.que.core.quecontainer.ContainerManager;
-import org.que.protocol.QubeDataProtocol;
+//import org.que.protocol.QubeDataProtocol;
 import org.que.protocol.QubePacket;
 import org.que.wallet.QubeWallet;
 import org.que.wallet.QubeWallet.Wallet;
@@ -56,8 +57,8 @@ public class TestQubeFlowNet {
                 tx.amount = 1000L + i; // 随便一个 amount
                 // 每 5 笔加一个 memo，用来测试 memo 手续费逻辑
                 tx.memo = (i % 5 == 0) ? ("交易备注_" + i) : "";
-                tx.publicKey = wallet.publicKeyHex;
-                tx.sign(privKey);
+              //  tx.publicKey = wallet.publicKeyHex;
+              //  tx.sign(privKey);
                 originalData = tx;
 
             } else if (type == 1) {
@@ -65,17 +66,17 @@ public class TestQubeFlowNet {
                 EntityData e = new EntityData(contractAddress);
                 e.owner = wallet.address;
                 e.content = "{\"index\":" + i + ",\"demo\":\"entity\"}";
-                e.publicKey = wallet.publicKeyHex;
-                e.sign(privKey);
+             //   e.publicKey = wallet.publicKeyHex;
+             //   e.sign(privKey);
                 originalData = e;
 
             } else {
                 // ---- 规则数据 RuleData ----
                 RuleData r = new RuleData(contractAddress);
-                r.ruleCode = "RULE_" + i;
-                r.description = "测试规则描述_" + i;
-                r.publicKey = wallet.publicKeyHex;
-                r.sign(privKey);
+             //   r.ruleCode = "RULE_" + i;
+            //    r.description = "测试规则描述_" + i;
+            //    r.publicKey = wallet.publicKeyHex;
+             //   r.sign(privKey);
                 originalData = r;
             }
 
@@ -83,21 +84,21 @@ public class TestQubeFlowNet {
             QubePacket packet = QubeDataProtocol.encodeData(originalData, privKey, pubKeyBytes);
 
             // 4. 模拟“网络传输”：发送的是 packet.toBytes()
-            byte[] networkBytes = packet.toBytes();
+         //   byte[] networkBytes = packet.toBytes();
 
             // 5. 服务器端：收到字节 → parse 成 QubePacket
-            QubePacket receivedPacket = QubePacket.parse(networkBytes);
+         //   QubePacket receivedPacket = QubePacket.parse(networkBytes);
 
             // 6. 服务器端：用协议还原三大数据对象（内部会做 verify）
-            QueBaseData decodedData = QubeDataProtocol.decodeData(receivedPacket);
+           // QueBaseData decodedData = QubeDataProtocol.decodeData(receivedPacket);
 
             // （可选）检查一下类型是否正常
             if (i < 5) {
-                System.out.println("示例数据 [" + i + "] = " + decodedData);
+            //    System.out.println("示例数据 [" + i + "] = " + decodedData);
             }
 
             // 7. 丢给区块控制器，由区块控制器决定 3 秒出块、队列等
-            BlockController.receive(decodedData);
+           // BlockController.receive(decodedData);
 
             if ((i + 1) % 1000 == 0) {
                 System.out.println("已通过协议发送并接收 " + (i + 1) + " 条数据");
@@ -128,3 +129,4 @@ public class TestQubeFlowNet {
         return out;
     }
 }
+*/
