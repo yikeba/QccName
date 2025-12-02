@@ -17,6 +17,7 @@ public class QubePacket {
     // 一些附加信息（可选）
     public long clientTime;
     public long nonce;
+
     public String toJson() {
         return JSON.toJSONString(this);
     }

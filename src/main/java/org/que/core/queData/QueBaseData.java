@@ -6,7 +6,7 @@ import org.que.util.QubeIdUtil;
 public abstract class QueBaseData {
 
     @JSONField(ordinal = 0)
-    public boolean debug = false;
+    public String type;
 
     @JSONField(ordinal = 1)
     public String id;
@@ -29,6 +29,7 @@ public abstract class QueBaseData {
 
 
     protected void initBaseFields(String contractAddress) {
+        this.type=getType();
         this.id = QubeIdUtil.nextId();
         this.contractAddress = contractAddress;
         this.timestamp = System.currentTimeMillis();
