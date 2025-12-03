@@ -53,7 +53,7 @@ public class QueContainerIndexEntry implements Serializable {
      * 查询增强：判断此区块是否“可能”包含该地址的数据。
      * （Bloom Filter 原理：可能包含 / 一定不包含）
      */
-    public boolean containsAddress(String address) {
+  /*  public boolean containsAddress(String address) {
         if (bloomFilter == null || address == null || address.length() < 10) return false;
 
         long hash = QueContainerWriter.murmurHash64(address.getBytes(StandardCharsets.UTF_8));
@@ -69,7 +69,25 @@ public class QueContainerIndexEntry implements Serializable {
             }
         }
         return true;
+    }*/
+    public boolean containsAddress(String address) {
+        if (bloomFilter == null || address == null || address.length() < 10) return false;
+
+        long hash = BloomFilterUtil.murmurHash64(address.getBytes(StandardCharsets.UTF_8));
+        for (int i = 0; i < BloomFilterUtil.BLOOM_HASHES; i++) {
+            long mixed = hash + BloomFilterUtil.MURMUR_SEEDS[i];
+            int pos = (int) (Math.abs(mixed) % BloomFilterUtil.BLOOM_BITS);
+            int hexIdx = pos >> 2;
+            int bitIdx = pos & 3;
+            if (hexIdx >= bloomFilter.length()) return false;
+            int hexVal = Character.digit(bloomFilter.charAt(hexIdx), 16);
+            if (hexVal < 0 || (hexVal & (1 << bitIdx)) == 0) {
+                return false;
+            }
+        }
+        return true;
     }
+
 
     @Override
     public String toString() {

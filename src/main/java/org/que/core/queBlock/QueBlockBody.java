@@ -22,6 +22,7 @@ public class QueBlockBody implements Serializable {
      * 添加数据
      */
     public void addData(QueBaseData data) {
+
         dataList.add(data);
     }
 

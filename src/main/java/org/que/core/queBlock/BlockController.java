@@ -1,6 +1,10 @@
 package org.que.core.queBlock;
 
+import org.que.core.cache.BalanceServer;
+import org.que.core.cache.LocalBalanceSnapshot;
+import org.que.core.cache.MemoryBalanceServer;
 import org.que.core.queData.QueBaseData;
+import org.que.core.queData.TransactionData;
 import org.que.core.quecontainer.ContainerManager;
 
 import java.util.ArrayList;
@@ -54,6 +58,10 @@ public class BlockController {
         return queue.size();
     }
 
+    private static final MemoryBalanceServer balanceServer = new MemoryBalanceServer();
+    private static final LocalBalanceSnapshot snapshot =
+            new LocalBalanceSnapshot(balanceServer);
+
 
     private static synchronized void buildNextBlock(List<QueBaseData> list) {
         long height = blockHeight.incrementAndGet();
@@ -61,6 +69,18 @@ public class BlockController {
         QueBaseBlock block = new QueBaseBlock(height, "1.0.0", lastBlockHash);
 
         for (QueBaseData d : list) {
+            // 交易验证
+            if (d instanceof TransactionData tx) {
+                if (!tx.verify(snapshot)) {
+                    System.err.println("[BlockEngine] 拒绝交易: from="
+                            + tx.from + " amount=" + tx.amount);
+                    continue;
+                }else{
+                    System.err.println("[BlockEngine] 批准交易: from="
+                            + tx.from + " amount=" + tx.amount);
+                }
+            }
+            // 验证通过 → 写入区块
             block.addData(d);
         }
 
@@ -68,12 +88,11 @@ public class BlockController {
 
         lastBlockHash = block.foot.blockHash;
 
-        // 关键修复：改用统一容器写入（等你告诉我用哪个方案）
-        ContainerManager.appendBlock(block);  // 推荐方案
+        ContainerManager.appendBlock(block);
 
         System.out.println("出块 #" + height +
-                "，数据量=" + list.size() +
-                "，blockHash=" + block.foot.blockHash.substring(0, 16) + "...");
+                " 数据量=" + block.body.dataList.size() +
+                " blockHash=" + block.foot.blockHash.substring(0, 16));
     }
 
     // 程序关闭时强制刷盘

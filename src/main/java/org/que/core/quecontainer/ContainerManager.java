@@ -1,5 +1,8 @@
 package org.que.core.quecontainer;
 
+import org.que.core.container.ContainerEvent;
+import org.que.core.container.ContainerEventManager;
+import org.que.core.container.ContainerEventType;
 import org.que.core.queBlock.QueBaseBlock;
 
 import java.util.ArrayList;
@@ -50,18 +53,8 @@ public class ContainerManager {
         }
     }
 
-    /**
-     * 判断是否需要生成新容器
-     */
     private static boolean shouldFlush() {
-        if (currentBlocks.isEmpty()) return false;
-
-        long totalBytes = currentBlocks.stream()
-                .mapToLong(b -> b.toJson().getBytes().length)
-                .sum();
-
-        return currentBlocks.size() >= MAX_BLOCKS_PER_CONTAINER
-                || totalBytes >= MAX_BYTES_PER_CONTAINER;
+        return ContainerRotationPolicy.shouldFlush(currentBlocks);
     }
 
     /**
@@ -72,6 +65,7 @@ public class ContainerManager {
             flushContainer();
         }
     }
+
 
     /**
      * 关闭管理器：先刷盘，再标记关闭
@@ -90,21 +84,21 @@ public class ContainerManager {
         if (currentBlocks.isEmpty()) return;
 
         long containerNumber = containerSeq.getAndIncrement();
-
         QueBaseContainer container = ContainerWriter.writeContainer(
                 containerNumber,
                 prevContainerHash,
-                currentBlocks
+                new ArrayList<>(currentBlocks)   // 防止引用被修改
         );
-
         prevContainerHash = container.tailHash;
-
         System.out.println(
                 "容器写入成功 #" + containerNumber +
                         " 区块数=" + currentBlocks.size() +
                         " tailHash=" + container.tailHash.substring(0, 16) + "..."
         );
-
+        // 容器完成生命周期事件
+        ContainerEventManager.trigger(
+                new ContainerEvent(ContainerEventType.CONTAINER_FINALIZED, container)
+        );
         currentBlocks.clear();
     }
 

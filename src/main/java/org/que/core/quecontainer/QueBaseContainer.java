@@ -3,6 +3,7 @@ package org.que.core.quecontainer;
 import org.que.crypto.CryptoUtil;
 
 import java.io.RandomAccessFile;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,7 @@ public class QueBaseContainer {
 
     /** 容器整文件 SHA3-256 校验（尾部存储），初始化时不会自动计算 */
     public String tailHash;
-
+    public Path containerFilePath;
     public QueBaseContainer() {}
 
     public QueBaseContainer(QueContainerHead head, List<QueContainerIndexEntry> indexList, String tailHash) {

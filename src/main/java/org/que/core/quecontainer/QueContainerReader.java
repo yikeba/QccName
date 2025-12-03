@@ -3,6 +3,8 @@ package org.que.core.quecontainer;
 import com.alibaba.fastjson2.JSON;
 import org.que.core.queBlock.QueBaseBlock;
 import org.que.crypto.CryptoUtil;
+
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -113,6 +115,23 @@ public class QueContainerReader {
         }
         return false;
     }
+
+    public static QueBaseBlock readBlock(Path file, long offset, long length) {
+        try (RandomAccessFile raf = new RandomAccessFile(file.toFile(), "r")) {
+            byte[] data = new byte[(int) length];
+            raf.seek(offset);
+            raf.readFully(data);
+            String json = new String(data, StandardCharsets.UTF_8);
+
+            // 使用 JSON 解析为区块对象（你原本就是 JSON 容器）
+            return com.alibaba.fastjson2.JSON.parseObject(json, QueBaseBlock.class);
+            //return QueBaseBlock.fromBytes(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 
     // =================== 区块查找 ===================
 

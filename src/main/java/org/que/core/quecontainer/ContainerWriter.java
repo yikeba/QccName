@@ -45,49 +45,42 @@ public class ContainerWriter {
             List<QueBaseBlock> blocks
     ) {
         try {
-            // head
-            QueContainerHead head = new QueContainerHead(
-                    UUID.randomUUID().toString().replace("-", ""),
+            // 1) 构建 head + indexList
+            ContainerBuilder.BuildResult buildResult = ContainerBuilder.build(
                     "QUBE_MAIN",
                     containerNumber,
                     prevContainerHash,
-                    "1.0.0"
+                    blocks
             );
 
-            // 目录
+            QueContainerHead head = buildResult.head;
+            List<QueContainerIndexEntry> indexList = buildResult.indexList;
+
+            // 2) 目录
             Path dir = QubePath.CONTAINER_DIR;
             Files.createDirectories(dir);
 
-            // 临时文件（稳定固定命名）
+            // 3) 临时文件
             Path tempFile = dir.resolve(String.format("container_%06d.tmp", containerNumber));
-
-            // 先写入临时文件
-           // QueBaseContainer c = QueContainerWriter.writeContainer(head, blocks, tempFile.toFile());
-
+            // 4) 写入临时文件（JSON）
+            QueBaseContainer c;
             try {
-                QueBaseContainer c = QueContainerWriter.writeContainer(head, blocks, tempFile.toFile());
-                // 最终文件名
+                c = QueContainerWriter.writeContainer(head, indexList, blocks, tempFile.toFile());
+                // 5) 最终文件名：tailHash.que
                 Path finalFile = dir.resolve(c.tailHash + ".que");
-                // rename
+                c.containerFilePath=finalFile;
                 Files.move(
                         tempFile,
                         finalFile,
                         StandardCopyOption.ATOMIC_MOVE,
                         StandardCopyOption.REPLACE_EXISTING
                 );
-
                 return c;
             } catch (Exception inner) {
                 System.err.println("WRITE FAILED at tempFile=" + tempFile);
                 inner.printStackTrace();
-                throw inner; // 必须 rethrow，不然下面 rename 又报错
+                throw inner;
             }
-
-
-
-
-
-
         } catch (Exception e) {
             throw new RuntimeException("容器写入失败 #" + containerNumber, e);
         }

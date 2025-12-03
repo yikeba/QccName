@@ -3,6 +3,7 @@ package org.que.core.queData;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.annotation.JSONField;
+import org.que.core.cache.LocalBalanceSnapshot;
 
 public class TransactionData extends QueBaseData {
 
@@ -30,6 +31,19 @@ public class TransactionData extends QueBaseData {
     public String getPayloadForHash() {
         return id + "|" + contractAddress + "|" + from + "|" + to + "|" + amount +
                 "|" + (memo == null ? "" : memo);
+    }
+
+    public boolean verify(LocalBalanceSnapshot snapshot) {
+        long balance = snapshot.getBalance(from);
+        if (balance < amount) {
+            System.err.println("[TX] 余额不足: from=" + from +
+                    " need=" + amount + " actual=" + balance);
+            return false;
+        }
+        snapshot.update(from, -amount);
+        snapshot.update(to,   +amount);
+        return true;
+
     }
 
     public String toJsonString() {
