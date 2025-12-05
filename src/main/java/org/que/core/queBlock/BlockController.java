@@ -1,16 +1,15 @@
 package org.que.core.queBlock;
-
-import org.que.core.cache.BalanceServer;
+import org.que.core.cache.BalanceContext;
 import org.que.core.cache.LocalBalanceSnapshot;
 import org.que.core.cache.MemoryBalanceServer;
 import org.que.core.queData.QueBaseData;
 import org.que.core.queData.TransactionData;
 import org.que.core.quecontainer.ContainerManager;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
+
 
 public class BlockController {
 
@@ -20,6 +19,7 @@ public class BlockController {
     private static final AtomicLong blockHeight = new AtomicLong(0);
     private static final String GENESIS_HASH = "0000000000000000000000000000000000000000000000000000000000000000";
     private static volatile String lastBlockHash = GENESIS_HASH;
+
 
     static {
         startBlockEngine();
@@ -58,10 +58,10 @@ public class BlockController {
         return queue.size();
     }
 
-    private static final MemoryBalanceServer balanceServer = new MemoryBalanceServer();
+   /* private static final MemoryBalanceServer balanceServer = new MemoryBalanceServer();
     private static final LocalBalanceSnapshot snapshot =
             new LocalBalanceSnapshot(balanceServer);
-
+*/
 
     private static synchronized void buildNextBlock(List<QueBaseData> list) {
         long height = blockHeight.incrementAndGet();
@@ -71,13 +71,10 @@ public class BlockController {
         for (QueBaseData d : list) {
             // 交易验证
             if (d instanceof TransactionData tx) {
-                if (!tx.verify(snapshot)) {
-                    System.err.println("[BlockEngine] 拒绝交易: from="
-                            + tx.from + " amount=" + tx.amount);
+                if (!tx.verify(BalanceContext.getReplaySnapshot())) {
+                    System.err.println("[BlockEngine] 拒绝交易: from=" + tx.from +
+                            " amount=" + tx.amount);
                     continue;
-                }else{
-                    System.err.println("[BlockEngine] 批准交易: from="
-                            + tx.from + " amount=" + tx.amount);
                 }
             }
             // 验证通过 → 写入区块

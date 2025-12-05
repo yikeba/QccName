@@ -22,6 +22,11 @@ public class MemoryBalanceServer implements BalanceServer {
         return balanceMap.getOrDefault(address, 0L);
     }
 
+    // MemoryBalanceServer.java
+    public Map<String, Long> getAllBalancesCopy() {
+        return Map.copyOf(balanceMap);  // Java 10+ 不可变副本，线程安全
+    }
+
     @Override
     public void updateBalance(String address, long delta) {
         if (address == null || delta == 0L) return;

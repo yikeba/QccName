@@ -3,8 +3,10 @@ package org.que.core.queData;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.annotation.JSONField;
+import com.alibaba.fastjson2.annotation.JSONType;
 import org.que.core.cache.LocalBalanceSnapshot;
 
+@JSONType(typeName = "transaction")   // 关键第1行
 public class TransactionData extends QueBaseData {
 
     private static final String TYPE = "transaction";

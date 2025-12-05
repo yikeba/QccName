@@ -9,8 +9,8 @@ import java.util.*;
 
 public class Test1000Transactions {
 
-    private static final int USER_COUNT = 10;
-    private static final int TX_COUNT = 1000;
+    private static final int USER_COUNT = 30;
+    private static final int TX_COUNT = 100000;
     private static final long INIT_BALANCE = 1_000_000L;
 
     static List<String> users = new ArrayList<>();
@@ -39,7 +39,7 @@ public class Test1000Transactions {
 
     public static void main(String[] args) throws Exception {
 
-        System.out.println("启动 1000 笔随机交易压测…");
+        System.out.println("启动 100000 笔随机交易压测…");
 
         initUsers();
 

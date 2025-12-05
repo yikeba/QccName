@@ -2,7 +2,9 @@ package org.que.core.queData;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.annotation.JSONField;
+import com.alibaba.fastjson2.annotation.JSONType;
 
+@JSONType(typeName = "rule")
 public class RuleData extends QueBaseData {
 
     private static final String TYPE = "rule";

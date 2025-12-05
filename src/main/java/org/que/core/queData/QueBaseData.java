@@ -1,7 +1,15 @@
 package org.que.core.queData;
 
+import com.alibaba.fastjson2.annotation.JSONCreator;
 import com.alibaba.fastjson2.annotation.JSONField;
+import com.alibaba.fastjson2.annotation.JSONType;
 import org.que.util.QubeIdUtil;
+// 加上这个注解！！！
+@JSONType(
+        typeKey = "type",
+        seeAlso = {EntityData.class, RuleData.class, TransactionData.class}
+)
+
 
 public abstract class QueBaseData {
 
@@ -26,6 +34,8 @@ public abstract class QueBaseData {
 
     @JSONField(ordinal = 6)
     public String signatureHash;
+
+
 
 
     protected void initBaseFields(String contractAddress) {

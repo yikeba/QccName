@@ -45,7 +45,7 @@ public class ContainerManager {
         if (isClosed) {
             throw new IllegalStateException("ContainerManager 已关闭，无法接收新区块");
         }
-
+        //System.out.println("[Writer] 实际写入容器路径 = " + filePath);
         currentBlocks.add(block);
 
         if (shouldFlush()) {

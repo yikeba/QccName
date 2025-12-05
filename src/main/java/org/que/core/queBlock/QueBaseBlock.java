@@ -80,6 +80,7 @@ public class QueBaseBlock implements Serializable {
      * JSON → 区块
      */
     public static QueBaseBlock fromJson(String json) {
+        System.out.println("序号区块字符串"+json);
         return JSON.parseObject(json, QueBaseBlock.class);
     }
 

@@ -1,3 +1,4 @@
+// LocalBalanceSnapshot.java  —— 只需要改这一个文件
 package org.que.core.cache;
 
 import org.que.core.queData.TransactionData;
@@ -10,65 +11,66 @@ public class LocalBalanceSnapshot {
     private final BalanceServer balanceServer;
     private final Map<String, Long> localBalance = new HashMap<>();
 
+    // 新增：回放模式开关（关键！）
+    private final boolean replayMode;
+
+    // 保留你原来的构造器（实时模式）
     public LocalBalanceSnapshot(BalanceServer balanceServer) {
+        this(balanceServer, false);  // 默认不是回放模式
+    }
+
+    // 新增：支持指定是否为回放模式
+    public LocalBalanceSnapshot(BalanceServer balanceServer, boolean replayMode) {
         this.balanceServer = balanceServer;
+        this.replayMode = replayMode;
     }
 
     public long getBalance(String address) {
+        if (address == null) return 0L;
+
+        // 如果已经在本地快照里，直接返回
         if (localBalance.containsKey(address)) {
             return localBalance.get(address);
         }
-        long globalBalance = balanceServer.getBalance(address);
-        localBalance.put(address, globalBalance);
-        return globalBalance;
+
+        // 关键修复：回放模式下，绝不读取全局！初始余额必须为 0
+        if (replayMode) {
+            //localBalance.put(address, 0L);  // 强制初始化为 0
+            return 0L;
+        }
+
+        // 实时模式才去全局查（懒加载）
+        long global = balanceServer.getBalance(address);
+        localBalance.put(address, global);
+        return global;
     }
 
     public long update(String address, long delta) {
-        long oldVal = getBalance(address);   // 这里会先从 BalanceServer 读一次初始余额
-        long newVal = oldVal + delta;
+        long current = getBalance(address);  // 现在安全了
+        long newVal = current + delta;
         localBalance.put(address, newVal);
-
-        // ⭐⭐ 测试模式：顺带更新全网余额（MemoryBalanceServer）
-        balanceServer.updateBalance(address, delta);
-
         return newVal;
     }
 
-
-    // ✅ 通用增加/减少余额（仅改本地快照，不动全局）
-  /*  public long update(String address, long delta) {
-        long oldVal = getBalance(address);    // 自动从全局加载一次
-        long newVal = oldVal + delta;
-        localBalance.put(address, newVal);
-        return newVal;
-    }*/
-
-    // 保留原来的快捷方法（可选）
+    // 保留你原来的 applyTransaction，完全不动
     public boolean applyTransaction(TransactionData tx) {
         long fromBalance = getBalance(tx.from);
-
         if (fromBalance < tx.amount) {
-            System.err.println("[LocalBalanceSnapshot] 余额不足: "
-                    + tx.from + " 需要=" + tx.amount + " 实际=" + fromBalance);
+            System.err.println("[回放失败] 余额不足: " + tx.from +
+                    " 需要=" + tx.amount + " 实际=" + fromBalance);
             return false;
         }
-
         update(tx.from, -tx.amount);
         update(tx.to,   +tx.amount);
-
         return true;
     }
 
     public Map<String, Long> getSnapshot() {
-        return localBalance;
-    }
-
-    public boolean containsAddress(String address) {
-        return localBalance.containsKey(address);
+        return new HashMap<>(localBalance);  // 返回副本更安全
     }
 
     @Override
     public String toString() {
-        return "LocalBalanceSnapshot{size=" + localBalance.size() + "}";
+        return "LocalBalanceSnapshot{replay=" + replayMode + ", size=" + localBalance.size() + "}";
     }
 }

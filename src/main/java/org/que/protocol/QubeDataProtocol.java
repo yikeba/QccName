@@ -80,7 +80,6 @@ public class QubeDataProtocol {
 
             // -------- 3. 解析 payloadJson（自动识别三大数据类型） --------
             QueBaseData data = QubeDataBaseFactory.fromJson(packet.payloadJson);
-
             // -------- 4. 自动推导 from 地址 --------
             byte[] rawPk = QubeWallet.getRawPublicKey(pubKey);
             String address = QubeWallet.generateAddress(rawPk);

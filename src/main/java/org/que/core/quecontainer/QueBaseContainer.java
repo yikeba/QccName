@@ -1,5 +1,6 @@
 package org.que.core.quecontainer;
 
+import org.que.core.queBlock.QueBaseBlock;
 import org.que.crypto.CryptoUtil;
 
 import java.io.RandomAccessFile;
@@ -23,7 +24,8 @@ public class QueBaseContainer {
 
     /** 容器头：包含 containerId, prevHash, timestamp, version 等 */
     public QueContainerHead head;
-
+    // ⭐ 必须：容器内所有区块
+    public List<QueBaseBlock> blocks;
     /** 区块索引列表（容器最重要的结构） */
     public List<QueContainerIndexEntry> indexList = new ArrayList<>();
 
