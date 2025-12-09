@@ -1,7 +1,5 @@
 package org.que.core.queBlock;
-import org.que.core.cache.BalanceContext;
-import org.que.core.cache.LocalBalanceSnapshot;
-import org.que.core.cache.MemoryBalanceServer;
+
 import org.que.core.queData.QueBaseData;
 import org.que.core.queData.TransactionData;
 import org.que.core.quecontainer.ContainerManager;
@@ -70,13 +68,13 @@ public class BlockController {
 
         for (QueBaseData d : list) {
             // 交易验证
-            if (d instanceof TransactionData tx) {
+           /* if (d instanceof TransactionData tx) {
                 if (!tx.verify(BalanceContext.getReplaySnapshot())) {
                     System.err.println("[BlockEngine] 拒绝交易: from=" + tx.from +
                             " amount=" + tx.amount);
                     continue;
                 }
-            }
+            }*/
             // 验证通过 → 写入区块
             block.addData(d);
         }

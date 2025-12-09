@@ -23,8 +23,8 @@ dependencies {
     // 2. Alibaba Fastjson2 —— 你点名要的！全球最硬最快JSON库！
     implementation("com.alibaba.fastjson2:fastjson2:2.0.52")
 
-    implementation 'org.iq80.leveldb:leveldb:0.12'
-    implementation 'org.iq80.leveldb:leveldb-api:0.12'
+   /* implementation 'org.iq80.leveldb:leveldb:0.12'
+    implementation 'org.iq80.leveldb:leveldb-api:0.12'*/
     // LZ4 压缩库（高性能）
     implementation 'org.lz4:lz4-java:1.8.0'
 

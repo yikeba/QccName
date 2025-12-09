@@ -1,3 +1,4 @@
+/*
 package org.que.core.cache;
 
 // BalanceContext.java —— 极简、正确、永不为奴版
@@ -13,7 +14,9 @@ public final class BalanceContext {
 
     private BalanceContext() {}
 
-    /** 测试专用：获取全局唯一的回放快照（只初始化一次） */
+    */
+/** 测试专用：获取全局唯一的回放快照（只初始化一次） *//*
+
     public static synchronized LocalBalanceSnapshot getReplaySnapshot() {
         if (REPLAY_SNAPSHOT == null) {
             REPLAY_SNAPSHOT = new LocalBalanceSnapshot(BALANCE_SERVER, true); // 禁止懒加载
@@ -22,8 +25,10 @@ public final class BalanceContext {
         return REPLAY_SNAPSHOT;
     }
 
-    /** 单元测试用：重置（可选） */
+    */
+/** 单元测试用：重置（可选） *//*
+
     public static synchronized void resetReplaySnapshot() {
         REPLAY_SNAPSHOT = null;
     }
-}
+}*/

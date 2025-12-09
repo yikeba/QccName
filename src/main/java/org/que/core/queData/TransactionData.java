@@ -4,7 +4,7 @@ package org.que.core.queData;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.annotation.JSONField;
 import com.alibaba.fastjson2.annotation.JSONType;
-import org.que.core.cache.LocalBalanceSnapshot;
+
 
 @JSONType(typeName = "transaction")   // 关键第1行
 public class TransactionData extends QueBaseData {
@@ -35,7 +35,7 @@ public class TransactionData extends QueBaseData {
                 "|" + (memo == null ? "" : memo);
     }
 
-    public boolean verify(LocalBalanceSnapshot snapshot) {
+/*    public boolean verify(LocalBalanceSnapshot snapshot) {
         long balance = snapshot.getBalance(from);
         if (balance < amount) {
             System.err.println("[TX] 余额不足: from=" + from +
@@ -46,7 +46,7 @@ public class TransactionData extends QueBaseData {
         snapshot.update(to,   +amount);
         return true;
 
-    }
+    }*/
 
     public String toJsonString() {
         return JSON.toJSONString(this);

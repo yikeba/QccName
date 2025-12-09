@@ -1,3 +1,4 @@
+/*
 // LocalBalanceSnapshot.java  —— 只需要改这一个文件
 package org.que.core.cache;
 
@@ -73,4 +74,4 @@ public class LocalBalanceSnapshot {
     public String toString() {
         return "LocalBalanceSnapshot{replay=" + replayMode + ", size=" + localBalance.size() + "}";
     }
-}
+}*/
