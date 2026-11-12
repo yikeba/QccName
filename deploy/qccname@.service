@@ -1,0 +1,26 @@
+# systemd 模板单元：同机多实例开机自启。实例名 %i 对应应用目录 /opt/qccname-%i
+#   /opt/qccname-qccio/   qccname.jar  qccname.properties  qcc-name-public-v1.0.0.json
+#   /opt/qccname-osnsg/   qccname.jar  qccname.properties  qcc-name-osn-v1.0.0.json  Reserved.config
+# 安装：
+#   sudo cp qccname@.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#   sudo systemctl enable --now qccname@qccio qccname@osnsg
+#   systemctl status qccname@osnsg      journalctl -u qccname@osnsg -f
+# 用 systemd 管理后，不要再用 ./qccname.sh start 启动同一实例（status / log 仍可用）
+[Unit]
+Description=QCC Namespace node (%i)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/qccname-%i
+ExecStart=/usr/bin/java -Xms64m -Xmx256m -Xss512k -XX:+UseSerialGC -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m -XX:+ExitOnOutOfMemoryError -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -Dfile.encoding=UTF-8 -Dqccname.instance=%i -cp qccname.jar qcc.name.node.NodeMain
+Restart=on-failure
+RestartSec=5
+# 退出码 2 = 配置错误，不重启
+RestartPreventExitStatus=2
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

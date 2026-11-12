@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSN 引导协议说明</title>
+<meta name="description" content="OSN 企业级 Namespace（.osn / .osnsg）引导协议的通俗说明：规则、管理名、如何自己核对。">
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --panel2:#f1f3f7; --ink:#14171f; --ink2:#4a5263; --ink3:#7a8294;
+  --line:#e2e6ee; --accent:#3b5bfd; --accent2:#0fb5a6; --warn:#d9822b; --bad:#d64545; --ok:#1f9d55;
+  --code:#0f1420; --codeink:#d6deeb; --radius:14px; --shadow:0 1px 2px rgba(20,23,31,.04),0 6px 24px rgba(20,23,31,.06);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0e14; --panel:#121722; --panel2:#18202e; --ink:#e8ecf4; --ink2:#a9b2c3; --ink3:#77819a;
+  --line:#232c3c; --accent:#7b93ff; --accent2:#2fd3c3; --code:#070a10; --codeink:#d6deeb; --shadow:none;}}
+:root[data-theme="dark"]{
+  --bg:#0b0e14; --panel:#121722; --panel2:#18202e; --ink:#e8ecf4; --ink2:#a9b2c3; --ink3:#77819a;
+  --line:#232c3c; --accent:#7b93ff; --accent2:#2fd3c3; --code:#070a10; --codeink:#d6deeb; --shadow:none;}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+html[lang="zh"] .en, html[lang="en"] .zh{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:18px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;color:var(--ink)}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font:700 13px var(--mono)}
+nav.links{display:flex;gap:18px;margin-left:auto;font-size:14px}
+nav.links a{color:var(--ink2)} nav.links a:hover{color:var(--ink);text-decoration:none}
+.tools{display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:6px 11px;font:600 13px var(--sans);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (max-width:820px){nav.links{display:none}}
+
+.hero{padding:76px 0 40px}
+.eyebrow{font:600 12px var(--mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:clamp(32px,5vw,52px);line-height:1.15;margin:14px 0 16px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{font-size:18px;color:var(--ink2);max-width:720px;margin:0 0 26px}
+.cta{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{padding:10px 16px;border-radius:10px;font-weight:600;font-size:15px}
+.cta a.a1{background:var(--accent);color:#fff} .cta a.a2{border:1px solid var(--line);color:var(--ink);background:var(--panel)}
+.cta a:hover{text-decoration:none;filter:brightness(1.05)}
+.namecard{margin-top:38px;display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.namecard .n{font:700 28px var(--mono);color:var(--ink)} .namecard .n i{font-style:normal;color:var(--accent2)}
+.namecard .arrow{font:600 22px var(--mono);color:var(--ink3)}
+.namecard .addr{font:13px/1.5 var(--mono);color:var(--ink2);word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chips span{font:600 13px var(--mono);padding:5px 11px;border-radius:99px;background:var(--panel);border:1px solid var(--line);color:var(--ink2)}
+.namecard small{display:block;color:var(--ink3);font:12px var(--sans);margin-top:4px}
+@media (max-width:700px){.namecard{grid-template-columns:1fr;text-align:left}.namecard .arrow{transform:rotate(90deg);justify-self:start}}
+
+section{padding:56px 0;border-top:1px solid var(--line)}
+section h2{font-size:28px;margin:0 0 8px;letter-spacing:-.3px}
+section .sub{color:var(--ink2);margin:0 0 28px;max-width:760px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+@media (max-width:860px){.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0;color:var(--ink2);font-size:15px;overflow-wrap:anywhere}
+.ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--panel2);color:var(--accent);margin-bottom:12px}
+.ico svg{width:18px;height:18px}
+
+.steps{counter-reset:s;display:grid;gap:18px}
+.step>div,.grid>*,.live>*,.namecard>*{min-width:0}
+.step{display:grid;grid-template-columns:44px 1fr;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.step .num{counter-increment:s;width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center;font:700 18px var(--mono)}
+.step .num::before{content:counter(s)}
+.step h3{margin:2px 0 6px;font-size:19px}
+.step p{margin:0 0 10px;color:var(--ink2)}
+.step ul{margin:6px 0 10px;padding-left:20px;color:var(--ink2)} .step li{margin:3px 0}
+@media (max-width:600px){.step{grid-template-columns:1fr}}
+
+pre{background:var(--code);color:var(--codeink);border-radius:11px;padding:14px 16px;overflow:auto;font:13px/1.6 var(--mono);margin:10px 0 4px;border:1px solid var(--line)}
+code{font-family:var(--mono);font-size:.92em}
+p code, li code, td code{background:var(--panel2);padding:1px 6px;border-radius:6px;color:var(--ink)}
+.k{color:#82aaff}.s{color:#c3e88d}.c{color:#637777}.v{color:#f78c6c}
+.note{border-left:3px solid var(--accent2);background:var(--panel2);padding:10px 14px;border-radius:0 10px 10px 0;color:var(--ink2);font-size:14.5px;margin:10px 0}
+.note.warn{border-color:var(--warn)}
+
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink3);font-weight:600;font-size:13px}
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;box-shadow:var(--shadow)}
+.pill{display:inline-block;font:600 12px var(--mono);padding:2px 8px;border-radius:99px;background:var(--panel2);color:var(--ink2)}
+.pill.ok{color:var(--ok)} .pill.bad{color:var(--bad)} .pill.warn{color:var(--warn)}
+
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;align-items:stretch}
+.flow .f{background:var(--panel);border:1px solid var(--line);padding:16px;position:relative}
+.flow .f:first-child{border-radius:var(--radius) 0 0 var(--radius)} .flow .f:last-child{border-radius:0 var(--radius) var(--radius) 0}
+.flow .f+.f{border-left:none}
+.flow .f b{display:block;font-size:15px;margin-bottom:4px} .flow .f span{color:var(--ink2);font-size:13.5px}
+.flow .f em{font:600 11px var(--mono);color:var(--accent);font-style:normal;letter-spacing:1px}
+@media (max-width:860px){.flow{grid-template-columns:1fr}.flow .f{border-radius:0!important;border-left:1px solid var(--line)!important}.flow .f+.f{border-top:none}.flow .f:first-child{border-radius:var(--radius) var(--radius) 0 0!important}.flow .f:last-child{border-radius:0 0 var(--radius) var(--radius)!important}}
+
+.live{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+@media (max-width:860px){.live{grid-template-columns:1fr}}
+.field{display:flex;gap:8px;margin:8px 0}
+.field input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:9px;padding:9px 11px;font:14px var(--mono)}
+.field input:focus{outline:2px solid color-mix(in srgb,var(--accent) 40%,transparent);border-color:var(--accent)}
+.out{font:12.5px/1.55 var(--mono);white-space:pre-wrap;word-break:break-all;background:var(--panel2);border-radius:10px;padding:12px;min-height:64px;color:var(--ink2);max-height:340px;overflow:auto}
+.big{font:700 22px var(--mono)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px} .kv dt{color:var(--ink3)} .kv dd{margin:0;font-family:var(--mono);word-break:break-all}
+
+footer{border-top:1px solid var(--line);padding:30px 0 50px;color:var(--ink3);font-size:14px}
+footer .wrap{display:flex;gap:14px 24px;flex-wrap:wrap;align-items:center}
+footer .powered{margin-left:auto}
+.mark{display:inline-grid;place-items:center;color:var(--ink)} .mark svg{width:100%;height:100%;display:block}
+.brand .mark{width:28px;height:28px}
+.powered{display:inline-flex;align-items:center;gap:9px;padding:7px 14px 7px 8px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--ink2);font:600 13px var(--sans);letter-spacing:.3px}
+.powered .mark{width:22px;height:22px} .powered b{color:var(--ink);letter-spacing:1px}
+.powered:hover{border-color:var(--ink3);text-decoration:none}
+.layers{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.layers{grid-template-columns:1fr}}
+.layer{border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:var(--panel);box-shadow:var(--shadow)}
+.layer .tagline{font:600 11px var(--mono);letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3)}
+.layer.res{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 7%,var(--panel)),var(--panel))}
+.layer.res .tagline{color:var(--accent)}
+.layer h3{margin:6px 0 8px;font-size:18px}
+.layer ul{margin:0;padding-left:18px;color:var(--ink2);font-size:14.5px} .layer li{margin:4px 0}
+.resolve{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 4px;font:600 13.5px var(--mono);color:var(--ink2)}
+.resolve span{padding:6px 12px;border-radius:9px;background:var(--panel2);border:1px solid var(--line)}
+.resolve span span{padding:0;border:0;background:none}
+.resolve span.hi{background:color-mix(in srgb,var(--accent) 14%,var(--panel));border-color:color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--ink)}
+.resolve i{font-style:normal;color:var(--ink3)}
+.case{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:16px}
+.case>*{min-width:0}
+@media (max-width:860px){.case{grid-template-columns:1fr}}
+.tl{list-style:none;margin:8px 0 0;padding:0;position:relative}
+.tl li{position:relative;padding:0 0 14px 26px;color:var(--ink2);font-size:14.5px}
+.tl li::before{content:"";position:absolute;left:6px;top:8px;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.tl li::after{content:"";position:absolute;left:10px;top:20px;bottom:-2px;width:1px;background:var(--line)}
+.tl li:last-child::after{display:none}
+.tl b{color:var(--ink);font-weight:600}
+.contact{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;align-items:stretch}
+.contact>*{min-width:0}
+@media (max-width:860px){.contact{grid-template-columns:1fr}}
+.mailcard{display:flex;flex-direction:column;justify-content:space-between;gap:10px;padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);color:var(--ink)}
+.mailcard:hover{border-color:var(--accent);text-decoration:none}
+.mailcard .addr{font:700 18px var(--mono);word-break:break-all}
+.mailcard small{color:var(--ink3);font-size:13px}
+.mailcard .go{font:600 13px var(--sans);color:var(--accent)}
+header.top .brand,nav.links a,.btn{white-space:nowrap}
+@media (max-width:1100px){nav.links{gap:12px}nav.links a{font-size:13.5px}}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html"><span class="mark"><svg viewBox="0 0 407 407" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M182.8 405.9C140.5 401.8 98.2 382.9 66.5 353.9C29.6 320.1 7.8 277.9 1.0 226.7C-1.6 207.1 0.4 176.4 5.6 155.0C14.5 118.9 34.1 84.5 61.0 58.1C91.1 28.5 128.3 9.9 172.5 2.4C185.1 0.2 217.4 -0.1 231.0 1.9C275.4 8.2 315.5 28.3 347.0 59.9C370.1 83.1 385.3 107.4 395.5 137.2C413.6 190.6 409.7 246.2 384.3 296.2C378.7 307.3 367.4 325.0 365.9 325.0C365.5 325.0 361.8 322.0 357.8 318.2C320.7 284.2 318.0 281.6 318.0 279.6C318.0 278.5 320.9 271.7 324.5 264.5C334.5 244.4 339.0 225.5 339.0 203.6C339.0 159.3 318.8 119.8 282.4 92.9C268.4 82.6 244.7 72.8 226.1 69.6C214.0 67.5 192.3 67.5 180.5 69.6C155.6 73.8 133.2 84.5 114.5 100.8C103.9 110.1 98.4 116.2 90.1 128.4C83.7 137.8 82.9 140.7 85.8 143.2C88.8 146.0 131.9 167.0 134.4 167.0C135.9 167.0 137.7 165.9 139.2 164.0C151.1 148.4 157.5 142.7 169.6 136.7C192.2 125.4 218.2 126.1 240.9 138.6C249.2 143.2 263.1 157.1 268.3 166.0C270.4 169.6 273.3 176.1 274.7 180.5C277.1 187.7 277.4 189.9 277.4 203.5C277.4 217.4 277.2 219.1 274.7 226.4C270.3 238.9 265.4 246.6 256.0 256.0C246.5 265.5 238.3 270.7 227.0 274.5C195.9 284.8 162.1 274.0 142.4 247.3C138.2 241.6 136.4 240.0 134.5 240.0C131.8 240.0 86.0 262.5 84.8 264.4C83.1 266.9 84.3 270.0 90.7 279.5C107.2 303.9 133.0 323.5 160.6 332.4C174.6 337.0 181.9 338.2 198.6 338.7C220.7 339.4 239.4 336.1 256.8 328.4C264.8 324.9 266.6 325.2 273.0 331.3C276.0 334.2 287.1 344.4 297.5 353.9C307.9 363.4 316.6 371.5 316.8 371.9C317.1 372.9 300.9 382.2 289.0 387.8C256.7 403.0 219.2 409.4 182.8 405.9Z"/></svg></span><span>OSN · Namespace</span></a>
+  <nav class="links">
+    <a href="index.html"><span class="zh">企业级 Namespace</span><span class="en">Enterprise Namespace</span></a>
+    <a href="#facts"><span class="zh">基本信息</span><span class="en">Facts</span></a>
+    <a href="#rules"><span class="zh">规则</span><span class="en">Rules</span></a>
+    <a href="#reserved"><span class="zh">管理名</span><span class="en">Management names</span></a>
+    <a href="#check"><span class="zh">自己核对</span><span class="en">Verify</span></a>
+    <a href="#contact"><span class="zh">联系</span><span class="en">Contact</span></a>
+  </nav>
+  <div class="tools">
+    <button class="btn" id="langBtn">EN</button>
+    <button class="btn" id="themeBtn" aria-label="theme">◐</button>
+  </div>
+</div></header>
+
+<main>
+<div class="wrap hero">
+  <div class="eyebrow">OSN · Bootstrap Protocol · qcc-name 1.0.0</div>
+  <h1><span class="zh">OSN 引导协议<br><span class="grad">说明（通俗版）</span></span><span class="en">The OSN bootstrap protocol,<br><span class="grad">in plain words</span></span></h1>
+  <p class="lead"><span class="zh">引导协议是一份 JSON 文件，写着 <code>.osn</code> / <code>.osnsg</code> 这两个账户名后缀的全部规则。它由 OSN 签名发布在 QCC 公链上，所有节点都按它运行，谁也不能私自修改。协议原文是给开发者看的；这一页用普通的话解释它说了什么。</span><span class="en">The bootstrap protocol is a JSON file holding every rule for the <code>.osn</code> / <code>.osnsg</code> account suffixes. OSN signed and published it on the QCC chain; every node runs by it and nobody can change it in private. The original is for developers; this page explains what it says in plain words.</span></p>
+  <div class="cta">
+    <a class="a1" href="#facts"><span class="zh">协议基本信息</span><span class="en">Key facts</span></a>
+    <a class="a2" href="#rules"><span class="zh">规则一览</span><span class="en">The rules</span></a>
+    <a class="a2" href="#reserved"><span class="zh">当前管理名</span><span class="en">Current management names</span></a>
+    <a class="a2" href="index.html"><span class="zh">← 企业级 Namespace</span><span class="en">← Enterprise Namespace</span></a>
+  </div>
+</div>
+
+<section id="facts"><div class="wrap">
+  <h2><span class="zh">基本信息</span><span class="en">Key facts</span></h2>
+  <p class="sub"><span class="zh">这几项信息决定了「哪一份协议才是真的」。任何人都可以拿它们去链上核对。</span><span class="en">These facts decide which protocol is the genuine one. Anyone can check them against the chain.</span></p>
+  <div class="grid g2">
+    <div class="card"><dl class="kv">
+      <dt><span class="zh">协议</span><span class="en">Protocol</span></dt><dd>qcc-name 1.0.0</dd>
+      <dt><span class="zh">适用后缀</span><span class="en">Suffixes</span></dt><dd>.osn  .osnsg</dd>
+      <dt><span class="zh">所属</span><span class="en">Owner</span></dt><dd>OSN · Open Settlement Network (Singapore)</dd>
+      <dt><span class="zh">链</span><span class="en">Chain</span></dt><dd>QCC 6666</dd>
+      <dt><span class="zh">区块高度</span><span class="en">Block height</span></dt><dd>26733</dd>
+    </dl></div>
+    <div class="card"><dl class="kv">
+      <dt><span class="zh">发布者</span><span class="en">Publisher</span></dt><dd>QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4</dd>
+      <dt><span class="zh">上链交易</span><span class="en">Transaction</span></dt><dd>3738af4899d88efdf1f357143c98379a0cd3505a2a7675b592dc9028cf98949b</dd>
+      <dt><span class="zh">协议指纹</span><span class="en">Fingerprint</span></dt><dd>c5e831931ac2b8a445bc1440be57b5249c8e635f1b329c14a3efdfa8c129a9a6</dd>
+      <dt><span class="zh">大小</span><span class="en">Size</span></dt><dd>17144 bytes</dd>
+    </dl></div>
+  </div>
+  <div class="note"><span class="zh">「协议指纹」是协议文件的 SHA3-256 值。文件哪怕改动一个字符，指纹都会完全不同；节点启动时会核对它，对不上就拒绝运行。</span><span class="en">The fingerprint is the SHA3-256 of the protocol file. Change a single character and the fingerprint changes completely; nodes check it at startup and refuse to run on a mismatch.</span></div>
+</div></section>
+
+<section id="rules"><div class="wrap">
+  <h2><span class="zh">规则一览</span><span class="en">The rules</span></h2>
+  <p class="sub"><span class="zh">下表是协议里每条规则的白话版本。</span><span class="en">Each rule of the protocol, in plain words.</span></p>
+  <div class="tbl"><table>
+    <tr><th><span class="zh">规则</span><span class="en">Rule</span></th><th><span class="zh">意思</span><span class="en">What it means</span></th></tr>
+    <tr><td><span class="zh">名字格式</span><span class="en">Name format</span></td><td><span class="zh"><code>名字.osn</code>，名字 2–32 个字符，只能用小写字母、数字和 <code>-</code>，不能以 <code>-</code> 开头或结尾</span><span class="en"><code>name.osn</code>; the name is 2–32 characters of lowercase letters, digits and <code>-</code>, not starting or ending with <code>-</code></span></td></tr>
+    <tr><td><span class="zh">谁能注册</span><span class="en">Who can register</span></td><td><span class="zh">任何人都可以，用自己的钱包签名注册，并质押 1 QCC 作为门槛</span><span class="en">Anyone, by signing with their own wallet and pledging 1 QCC as the entry bar</span></td></tr>
+    <tr><td><span class="zh">注册 ≠ 能用</span><span class="en">Registered ≠ admitted</span></td><td><span class="zh">注册了 <code>.osn</code> 名字，不代表能使用 OSN 的邮箱或内部系统。能不能用，由各系统的白名单决定</span><span class="en">Holding a <code>.osn</code> name does not grant OSN mail or internal systems. Each system's whitelist decides</span></td></tr>
+    <tr><td><span class="zh">一个地址一个名字</span><span class="en">One name per address</span></td><td><span class="zh">同一个钱包地址在 <code>.osn</code> 下只能有一个名字（<code>.osnsg</code> 另算）</span><span class="en">One wallet address holds at most one <code>.osn</code> name (<code>.osnsg</code> counts separately)</span></td></tr>
+    <tr><td><span class="zh">不能改、不能转</span><span class="en">No edits, no transfers</span></td><td><span class="zh">名字只能注册或删除；质押撤销后名字自动回收</span><span class="en">A name can only be registered or deleted; withdrawing the pledge reclaims it automatically</span></td></tr>
+    <tr><td><span class="zh">冷却期</span><span class="en">Cooldown</span></td><td><span class="zh">名字删除或回收后 30 天内，任何人都不能重新注册，防止被人立刻抢走冒充</span><span class="en">For 30 days after deletion or reclaim, nobody can register the name, so it cannot be grabbed for impersonation</span></td></tr>
+    <tr><td><span class="zh">形近字</span><span class="en">Lookalikes</span></td><td><span class="zh"><code>0</code> 视同 <code>o</code>、<code>1</code> 视同 <code>l</code>、<code>rn</code> 视同 <code>m</code>：已有 <code>admin.osn</code>，就不能再注册 <code>adrnin.osn</code></span><span class="en"><code>0</code> counts as <code>o</code>, <code>1</code> as <code>l</code>, <code>rn</code> as <code>m</code>: with <code>admin.osn</code> taken, <code>adrnin.osn</code> is refused</span></td></tr>
+    <tr><td><span class="zh">管理名（Reserved）</span><span class="en">Management names (Reserved)</span></td><td><span class="zh">OSN 用发布者地址签名发布一张管理名表，表里的名字只对应 OSN 指定的地址，优先于任何注册</span><span class="en">OSN publishes a table of management names signed by the publisher; those names map only to the addresses OSN sets, above any registration</span></td></tr>
+    <tr><td><span class="zh">冻结</span><span class="en">Freezing</span></td><td><span class="zh">发现可疑账户，OSN 把它写进管理名表并留空地址：原注册立即移除，名字被锁定</span><span class="en">For a suspicious account, OSN lists it in the table with an empty address: the registration is removed and the name is locked</span></td></tr>
+    <tr><td><span class="zh">时间</span><span class="en">Time</span></td><td><span class="zh">每一版管理名表在它上链的区块高度生效，所有节点同时切换，历史全部保留</span><span class="en">Each table version takes effect at its block height; all nodes switch together and the full history is kept</span></td></tr>
+  </table></div>
+</div></section>
+
+<section id="reserved"><div class="wrap">
+  <h2><span class="zh">当前管理名（实时）</span><span class="en">Current management names (live)</span></h2>
+  <p class="sub"><span class="zh">以下内容直接读取本节点的 <code>/v1/reserved</code>。地址为空表示「保留、暂不使用」。</span><span class="en">Read live from this node's <code>/v1/reserved</code>. An empty address means "reserved, not in use".</span></p>
+  <div class="grid g2">
+    <div class="card"><h3><span class="zh">管理名表</span><span class="en">Management table</span></h3><div class="tbl" style="box-shadow:none;margin-top:8px"><table id="rNames"><tr><td>…</td></tr></table></div></div>
+    <div class="card"><h3><span class="zh">历史版本</span><span class="en">Version history</span></h3><div class="tbl" style="box-shadow:none;margin-top:8px"><table id="rHist"><tr><td>…</td></tr></table></div>
+      <div class="note" id="rPub" style="margin-top:12px"></div></div>
+  </div>
+</div></section>
+
+<section id="who"><div class="wrap">
+  <h2><span class="zh">对不同的人意味着什么</span><span class="en">What it means for you</span></h2>
+  <div class="grid g3">
+    <div class="card"><h3><span class="zh">OSN 员工</span><span class="en">OSN staff</span></h3><p><span class="zh">用钱包注册自己的 <code>.osn</code> 名字，再由管理员加入邮箱等系统的白名单。登录时用钱包签名，不需要密码。</span><span class="en">Register your <code>.osn</code> name with your wallet; an admin adds you to the mail and other whitelists. You sign in with a wallet signature, no password.</span></p></div>
+    <div class="card"><h3><span class="zh">合作伙伴与客户</span><span class="en">Partners and clients</span></h3><p><span class="zh">看到一个 <code>.osn</code> 名字时，请通过 OSN 官方渠道确认对方是否为 OSN 员工。名字本身只证明「这个名字属于这个钱包」。</span><span class="en">When you see a <code>.osn</code> name, confirm through official OSN channels that the person works for OSN. The name itself only proves "this name belongs to this wallet".</span></p></div>
+    <div class="card"><h3><span class="zh">外部注册者</span><span class="en">Outside registrants</span></h3><p><span class="zh">可以注册 <code>.osn</code> 名字，但无法使用 OSN 的任何系统；冒用将被冻结。</span><span class="en">You may register a <code>.osn</code> name, but cannot use any OSN system; misuse will be frozen.</span></p></div>
+  </div>
+</div></section>
+
+<section id="check"><div class="wrap">
+  <h2><span class="zh">自己动手核对</span><span class="en">Check it yourself</span></h2>
+  <p class="sub"><span class="zh">不需要相信这个网页，三步就能独立核对协议是否被改过。</span><span class="en">No need to trust this page: three steps independently confirm the protocol is unaltered.</span></p>
+  <div class="steps">
+    <div class="step"><div class="num"></div><div><h3><span class="zh">从 QCC 链取回交易</span><span class="en">Fetch the transaction from QCC</span></h3><pre>GET http://&lt;QCC-node-IP&gt;:9080/v1/hash/3738af4899d88efdf1f357143c98379a0cd3505a2a7675b592dc9028cf98949b</pre></div></div>
+    <div class="step"><div class="num"></div><div><h3><span class="zh">确认发布者</span><span class="en">Confirm the publisher</span></h3><p><span class="zh">交易里的 <code>from</code> 必须是 <code>QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4</code>。</span><span class="en">The transaction's <code>from</code> must be <code>QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4</code>.</span></p></div></div>
+    <div class="step"><div class="num"></div><div><h3><span class="zh">计算指纹</span><span class="en">Compute the fingerprint</span></h3><p><span class="zh">对交易里的 <code>payload</code> 计算 SHA3-256，结果应为 <code>c5e83193…a9a6</code>。</span><span class="en">SHA3-256 of the transaction <code>payload</code> must equal <code>c5e83193…a9a6</code>.</span></p></div></div>
+  </div>
+</div></section>
+
+<section id="contact"><div class="wrap">
+  <h2><span class="zh">联系我们</span><span class="en">Contact</span></h2>
+  <p class="sub"><span class="zh">企业级 namespace 部署、Reserved 设计、行业 fork、节点合作，欢迎来信。两个邮箱都由 QCC 团队处理。</span><span class="en">Enterprise namespace deployment, Reserved design, industry forks, running nodes — write to us. Both addresses reach the QCC team.</span></p>
+  <div class="contact">
+    <div class="card"><h3><span class="zh">我们可以帮你</span><span class="en">What we can help with</span></h3>
+      <ul style="margin:6px 0 0;padding-left:18px;color:var(--ink2);font-size:14.5px">
+        <li><span class="zh">现有账户体系的抗量子迁移方案</span><span class="en">Post-quantum migration of an existing account system</span></li>
+        <li><span class="zh">企业 tag、Reserved 管理名与多签发布地址</span><span class="en">Enterprise tags, Reserved management names, multi-sig publishers</span></li>
+        <li><span class="zh">qccauth 接入、私有 namespace 节点部署</span><span class="en">qccauth integration, private namespace nodes</span></li>
+      </ul></div>
+    <a class="mailcard" href="mailto:dev@qccio.com"><div><small>QCC · qccio.com</small><div class="addr">dev@qccio.com</div></div><span class="go"><span class="zh">写邮件 →</span><span class="en">Send email →</span></span></a>
+    <a class="mailcard" href="mailto:dev@osnsg.com"><div><small>OSN · osnsg.com</small><div class="addr">dev@osnsg.com</div></div><span class="go"><span class="zh">写邮件 →</span><span class="en">Send email →</span></span></a>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <div>QCC-Namespace v1.0 · <span class="zh">抗量子去中心化账户名</span><span class="en">post-quantum decentralized names</span> · <a href="mailto:dev@qccio.com">dev@qccio.com</a> · <a href="mailto:dev@osnsg.com">dev@osnsg.com</a></div>
+  <div><a href="https://test.qccio.com" target="_blank" rel="noopener"><span class="zh">QCC 开发者网站</span><span class="en">QCC developer site</span></a> · <a href="https://test.qccio.com" target="_blank" rel="noopener"><span class="zh">白皮书（即将发布）</span><span class="en">Whitepaper (coming soon)</span></a> · <a href="#" id="repoLink"><span class="zh">开源仓库（即将发布）</span><span class="en">Source (coming soon)</span></a> · <a href="ops.html"><span class="zh">运维手册</span><span class="en">Operations manual (zh)</span></a></div>
+  <a class="powered" href="https://test.qccio.com" target="_blank" rel="noopener"><span class="mark"><svg viewBox="0 0 407 407" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M182.8 405.9C140.5 401.8 98.2 382.9 66.5 353.9C29.6 320.1 7.8 277.9 1.0 226.7C-1.6 207.1 0.4 176.4 5.6 155.0C14.5 118.9 34.1 84.5 61.0 58.1C91.1 28.5 128.3 9.9 172.5 2.4C185.1 0.2 217.4 -0.1 231.0 1.9C275.4 8.2 315.5 28.3 347.0 59.9C370.1 83.1 385.3 107.4 395.5 137.2C413.6 190.6 409.7 246.2 384.3 296.2C378.7 307.3 367.4 325.0 365.9 325.0C365.5 325.0 361.8 322.0 357.8 318.2C320.7 284.2 318.0 281.6 318.0 279.6C318.0 278.5 320.9 271.7 324.5 264.5C334.5 244.4 339.0 225.5 339.0 203.6C339.0 159.3 318.8 119.8 282.4 92.9C268.4 82.6 244.7 72.8 226.1 69.6C214.0 67.5 192.3 67.5 180.5 69.6C155.6 73.8 133.2 84.5 114.5 100.8C103.9 110.1 98.4 116.2 90.1 128.4C83.7 137.8 82.9 140.7 85.8 143.2C88.8 146.0 131.9 167.0 134.4 167.0C135.9 167.0 137.7 165.9 139.2 164.0C151.1 148.4 157.5 142.7 169.6 136.7C192.2 125.4 218.2 126.1 240.9 138.6C249.2 143.2 263.1 157.1 268.3 166.0C270.4 169.6 273.3 176.1 274.7 180.5C277.1 187.7 277.4 189.9 277.4 203.5C277.4 217.4 277.2 219.1 274.7 226.4C270.3 238.9 265.4 246.6 256.0 256.0C246.5 265.5 238.3 270.7 227.0 274.5C195.9 284.8 162.1 274.0 142.4 247.3C138.2 241.6 136.4 240.0 134.5 240.0C131.8 240.0 86.0 262.5 84.8 264.4C83.1 266.9 84.3 270.0 90.7 279.5C107.2 303.9 133.0 323.5 160.6 332.4C174.6 337.0 181.9 338.2 198.6 338.7C220.7 339.4 239.4 336.1 256.8 328.4C264.8 324.9 266.6 325.2 273.0 331.3C276.0 334.2 287.1 344.4 297.5 353.9C307.9 363.4 316.6 371.5 316.8 371.9C317.1 372.9 300.9 382.2 289.0 387.8C256.7 403.0 219.2 409.4 182.8 405.9Z"/></svg></span><span>Powered by <b>QCC</b></span></a>
+</div></footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+  var lang=get('qn-lang')||((navigator.language||'').toLowerCase().indexOf('zh')===0?'zh':'en');
+  function applyLang(){root.lang=lang;document.getElementById('langBtn').textContent=lang==='zh'?'EN':'中文';
+    document.title=lang==='zh'?'OSN 引导协议说明':'OSN bootstrap protocol explained'; if(window.__render) window.__render()}
+  document.getElementById('langBtn').onclick=function(){lang=lang==='zh'?'en':'zh';set('qn-lang',lang);applyLang()};
+  var th=get('qn-theme'); if(th) root.dataset.theme=th;
+  document.getElementById('themeBtn').onclick=function(){
+    var dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark'; set('qn-theme',root.dataset.theme)};
+  window.__lang=function(){return lang};
+  var API=location.protocol.indexOf('http')===0?'':'http://127.0.0.1:9181', data=null, err=false;
+  function esc(s){return String(s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+  window.__render=function(){
+    var zh=window.__lang()==='zh', n=document.getElementById('rNames'), h=document.getElementById('rHist'), p=document.getElementById('rPub');
+    if(err||!data){var m=err?(zh?'节点接口不可达（本地预览时属正常）':'Node API unreachable (normal in local preview)'):'…';
+      n.innerHTML=h.innerHTML='<tr><td>'+m+'</td></tr>'; p.textContent=''; return}
+    var names=Object.keys(data.names||{});
+    n.innerHTML='<tr><th>'+(zh?'名字':'Name')+'</th><th>'+(zh?'地址':'Address')+'</th></tr>'+(names.length?names.map(function(k){var a=data.names[k];
+      return '<tr><td><code>'+esc(k)+'</code></td><td style="font-family:var(--mono);font-size:12.5px;word-break:break-all">'+(a?esc(a):'<span class="pill warn">'+(zh?'保留 · 未绑定':'reserved · unbound')+'</span>')+'</td></tr>'}).join(''):'<tr><td colspan="2">'+(zh?'尚未发布':'Not published yet')+'</td></tr>');
+    var hist=data.history||[];
+    h.innerHTML='<tr><th>seq</th><th>'+(zh?'区块高度':'Height')+'</th><th>'+(zh?'交易':'Tx')+'</th></tr>'+(hist.length?hist.slice().reverse().map(function(v){
+      return '<tr><td>'+v.seq+'</td><td>'+v.height+'</td><td style="font-family:var(--mono);font-size:12.5px;word-break:break-all">'+esc(v.tx)+'</td></tr>'}).join(''):'<tr><td colspan="3">—</td></tr>');
+    p.innerHTML=(zh?'发布者：':'Publisher: ')+'<code>'+esc(data.publisher||'—')+'</code>'+(data.enabled?'':(zh?'（本节点未启用 Reserved）':' (Reserved not enabled on this node)'));
+  };
+  fetch(API+'/v1/reserved').then(function(r){return r.json()}).then(function(j){data=j;window.__render()}).catch(function(){err=true;window.__render()});
+  applyLang();
+})();
+</script>
+</body>
+</html>

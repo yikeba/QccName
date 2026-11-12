@@ -1,0 +1,194 @@
+{
+  "spec": "a25375d6cf4feb2a3fc86afd553bdc8157991894ea6cd0e0bf14462557f46fdf",
+  "protocol": "qcc-name",
+  "version": "1.0.0",
+  "prevProtocolHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "status": "voluntary",
+
+  "docs": {
+    "note": "Informative text for humans. Machine fields are normative. References of the form {path} are resolved against this document by display tools.",
+    "zh": {
+      "overview": "QCC-Namespace 为 ML-DSA-87 地址提供一个简单可读的账户名,形如 名字.tag,例如 alice.qcc。它只回答一个问题:这个名字是否对应这个地址。鉴权由应用服务器自己完成,namespace 不做 KYC,不封禁账户。本协议是企业级 namespace(新加坡 OSN):tag 不开放自助注册,所有名字由协议发布者在 Reserved 中分配给内部成员,外部地址无法注册。账户只能注册或删除,不能编辑、不能转让;同一个地址在同一个 tag 下只能拥有一个名字。",
+      "reserved": "保留名(Reserved)是协议发布者的管理边界,用于企业级 namespace 的内部管理名称(如 admin、support、security)。只有发布本协议的那个地址(本协议所在 QCC 交易的 from)可以发布 Reserved 文档,文档以 QCCData 交易上链,每一版都是完整的表,seq 从 1 起逐版加 1,并用 prevTx 指向上一版的交易哈希。Reserved 高于注册信息:名字在当前生效的 Reserved 中,就按 Reserved 给出的地址回答,注册表不再参与;Reserved 中的名字及与之形近的名字都不能注册;已注册的同名名字在 Reserved 生效时被移除并进入冷却期。地址为空串表示保留但暂不绑定(查询结果为不存在)。从表中去掉一个名字必须同时写进 release,才重新开放注册。每一版在其交易所在的区块高度生效,高度必须严格递增;节点之间通过日志中的 reserve 操作保持一致,不依赖各自读取链的时间。没有发布 Reserved 时,registration 为 open 的 tag 完全开放。每个名称 tag 声明 registration:open 表示开放注册,任何人满足质押即可注册,先到先得;reserved 表示不开放自助注册,该 tag 下的名字只能由协议发布者在 Reserved 中分配。发布地址的安全(例如多签)属于链上账户的安全,不在本协议之内。",
+      "trustRoot": "应用只硬编码两个常量:本协议在 QCC 公链上的交易哈希,以及本协议原始字节的 SHA3-256。namespace 节点启动时取回本协议并校验哈希,所有运行参数都从这里读取。",
+      "boundary": "本协议中的参数就是节点行为的边界:没有默认值,没有未声明的操作,检查顺序由 ops 字段决定。节点遇到不认识的字段或缺少字段时拒绝启动。运营方无法通过修改代码常量改变规则。",
+      "operations": "注册需要被授权地址(建议使用 0 资产钱包)在 QCC 公链上持有 tag 为 {params.pledgeTag} 的授权质押,金额与资产由各名称 tag 的策略决定;注册请求必须给出授权质押交易哈希并由该地址签名。删除必须由持有地址签名,并指明要删除的是哪一次注册。名称删除后 {params.cooldownMs} 毫秒内任何人(包括原地址)都不能再注册。授权方撤销质押后,该名称失效,并会在下一次发生冲突时被节点回收。",
+      "verifiability": "本协议的可验证等级为 L1(结果可验证):节点返回的每个名称结果都附带用户的注册签名与授权质押交易哈希,任何人都可以用 QCC 公链上的公钥验证签名,并查询该授权质押当前是否仍然存在。",
+      "governance": "名称 tag 的质押门槛由本协议的 tags 字段固定。调整门槛必须发布新版本协议,新规则只对之后的注册生效;用户不认同时可随时撤销授权质押,资产全额退回,同时放弃名称。质押的资产属于用户,名称是这份质押换来的使用凭证。",
+      "limits": "L1 只能证明每一个返回的结果是真实的,不能证明运营方没有拒绝或延迟某个请求,也不能证明名称的先到先得顺序。没有锚定上链时,运营方理论上可以整体改写历史。节点在规则之外的行为(例如记录访问信息)无法通过协议证明,只能依靠开源与审计。"
+    },
+    "en": {
+      "overview": "QCC-Namespace gives ML-DSA-87 addresses a simple readable account name of the form name.tag, for example alice.qcc. It answers one question only: does this name correspond to this address. Authentication is done by the application server itself; namespace performs no KYC and bans no accounts. This protocol is an enterprise namespace (OSN, Singapore): its tags are closed to self-registration; every name is assigned to internal members by the protocol publisher in Reserved, and outside addresses cannot register. An account can only be registered or deleted, never edited or transferred; one address can hold only one name under each tag.",
+      "reserved": "Reserved names are the management boundary of the protocol publisher, intended for the internal management names of an enterprise namespace (such as admin, support, security). Only the address that published this protocol (the from of the QCC transaction carrying it) may publish a Reserved document. The document is published as a QCCData transaction; every version is a complete table, seq starts at 1 and increases by one per version, and prevTx points to the transaction hash of the previous version. Reserved takes precedence over registrations: a name present in the effective Reserved is answered with the address Reserved gives, and the registry is not consulted; names in Reserved and names confusable with them cannot be registered; an existing registration of the same name is removed and enters cooldown when the Reserved version takes effect. An empty address means reserved but currently unbound (lookups report not found). Removing a name from the table requires listing it in release, which reopens it for registration. Each version takes effect at the block height of its transaction, and heights must strictly increase; nodes stay consistent through the reserve operation in the log, independent of when each node reads the chain. Without any Reserved document every tag whose registration is open is fully open. Each name tag declares registration: open means anyone who meets the pledge may register, first come first served; reserved means no self-registration, and names under that tag can only be assigned by the protocol publisher in Reserved. The security of the publisher address (for example multi-signature) is a matter of the chain account and is outside this protocol.",
+      "trustRoot": "An application hardcodes exactly two constants: the QCC chain transaction hash of this protocol and the SHA3-256 of its raw bytes. A namespace node fetches this protocol at startup, checks the hash, and reads every operating parameter from it.",
+      "boundary": "The parameters in this protocol are the boundary of node behaviour: no defaults, no undeclared operations, and check order is decided by the ops field. A node refuses to start on an unknown or missing field. An operator cannot change the rules by editing a constant in code.",
+      "operations": "Registration requires the authorised address (a zero-asset wallet is recommended) to hold an authorised pledge on the QCC chain under tag {params.pledgeTag}; the asset and amount are set by the policy of each name tag. The registration request must carry the pledge transaction hash and be signed by that address. Deletion must be signed by the holding address and must name the specific registration being deleted. After a name is deleted, nobody, including the original address, may register it again for {params.cooldownMs} milliseconds. Once the authorising party revokes the pledge, the name becomes invalid and is reclaimed by the node at the next conflict.",
+      "verifiability": "This protocol declares verifiability level L1 (result-verifiable): every name result a node returns carries the user's registration signature and the pledge transaction hash, so anyone can verify the signature with the public key on the QCC chain and check whether the authorised pledge still exists.",
+      "governance": "Pledge thresholds for each name tag are fixed by the tags field of this protocol. Changing a threshold requires publishing a new protocol version, and new rules apply only to later registrations; a user who disagrees may revoke the pledge at any time, receive the assets back in full, and give up the name. The pledged asset belongs to the user; the name is a right of use obtained through that pledge.",
+      "limits": "L1 only proves that each returned result is genuine. It cannot prove that the operator did not refuse or delay a request, nor the first-come order of registrations. Without anchoring on chain the operator could in principle rewrite history as a whole. What a node does outside its rules, such as recording access information, cannot be proven through the protocol; it can only be addressed by open source and audit."
+    }
+  },
+
+  "encoding": {
+    "self": "json-utf8",
+    "hashAlg": "SHA3-256",
+    "hashInput": "raw published payload bytes",
+    "reEncodingForbidden": true,
+    "byteOrderMarkForbidden": true,
+    "lineEnding": "LF",
+    "note": "A re-encoded document is a DIFFERENT protocol with a DIFFERENT hash."
+  },
+
+  "verifiability": {
+    "level": "L1",
+    "evidence": {
+      "register": ["opBytes: the RegisterOp binary form", "signature: ML-DSA-87 over the RegisterOp sign string", "pubkey: GET /v1/addresskey/{address} on the QCC chain", "pledge: GET /v1/pledge/{address}?tag={params.pledgeTag}&hash={credentialHash} on the QCC chain"],
+      "reserve": ["opBytes: the ReserveOp binary form, which carries the full Reserved document", "transaction: GET /v1/hash/{reservedTx} on the QCC chain; from, height and payload must equal the publisher, height and document in opBytes"],
+      "note": "A verifier rebuilds the sign string from opBytes, checks the signature against the chain public key, checks that name and address in opBytes match the result, and checks that the pledge exists and meets the tag policy."
+    }
+  },
+
+  "params": {
+    "chain": "6666",
+    "pledgeTag": "qccio",
+    "amountUnit": "NanoQCC, 1 QCC = 1000000000",
+    "labelMinLen": 2,
+    "labelMaxLen": 32,
+    "labelAlphabet": "abcdefghijklmnopqrstuvwxyz0123456789-",
+    "labelNoLeadingHyphen": true,
+    "labelNoTrailingHyphen": true,
+    "confusableMap": {
+      "0": "o",
+      "1": "l",
+      "rn": "m"
+    },
+    "confusableAlgorithm": "single left-to-right pass over the label; at each position try map keys longest-first; on a match emit the replacement and advance by the key length; otherwise emit one character; the output is never rescanned; scope is per tag",
+    "cooldownMs": 2592000000,
+    "entranceClockSkewMs": 300000,
+    "minBackupAcks": 1
+  },
+
+  "tags": {
+    "osn": {
+      "assetId": "QCC",
+      "minAmount": 1000000000,
+      "registration": "reserved"
+    },
+    "osnsg": {
+      "assetId": "QCC",
+      "minAmount": 1000000000,
+      "registration": "reserved"
+    }
+  },
+
+  "reserved": {
+    "spec": "qcc-name-reserved",
+    "maxBytes": 262144,
+    "publisher": "the from address of the QCC chain transaction that carries this protocol; nodes obtain it from GET /v1/hash/{protocolTx} and check that the payload hashes to this protocol",
+    "document": "QCCData payload, json-utf8 without BOM or CR, exactly the keys protocol (= qcc-name-reserved), version (= 1.0.0), nameProtocolHash (= this protocol's hash), seq (integer, previous + 1, first = 1), prevTx (transaction hash of the previous version, empty string for the first), names (object: full name label.tag -> Q address, or empty string for reserved but unbound), release (array of full names removed from the table)",
+    "rules": "every name and release entry has a tag declared in tags and a label that passes labelFormat; release entries must be in the previous table and not in names; every name of the previous table must appear in names or release",
+    "resolution": "a name present in the effective table resolves to its table address (empty string = not found) before the registry is consulted; registration of a name in the table, or of a name whose confusable key equals that of a name in the table, fails with reserved",
+    "effectiveAt": "the block height of the transaction; heights strictly increase; effect is applied by a reserve op in the log"
+  },
+
+  "op": {
+    "magic": "QNS1",
+    "signSeparator": "|",
+    "signString": {
+      "register": "QNS1|register|chain|address|name|timestamp|credentialHash",
+      "unregister": "QNS1|unregister|chain|address|name|timestamp|regSeq",
+      "expire": "QNS1|expire|chain|address|name|timestamp|credentialHash",
+      "reserve": "QNS1|reserve|chain|address||timestamp|reservedTx|height|documentHash"
+    },
+    "signature": "ML-DSA-87, pure mode, empty context, over the UTF-8 bytes of the sign string",
+    "binary": "magic(4) | u8(type) | str(chain) | str(address) | str(name) | u64(timestamp) | tail; register and expire tail = hash32(credentialHash), unregister tail = u64(regSeq), reserve tail = hash32(reservedTx) | u64(height) | bytes(document); for reserve, address = publisher, name = empty string, timestamp = confirmTimestamp of the transaction"
+  },
+
+  "ops": [
+    {
+      "code": 1,
+      "name": "register",
+      "userSigned": true,
+      "checks": ["tsMonotonic", "tagOpen", "pledgeMet", "labelFormat", "notReserved", "notConfusable", "nameFree", "cooldownPassed", "addressFree"],
+      "loggedRejections": [10, 11, 12, 13, 14, 20],
+      "effect": "put name record; put holder (tag, address); put confusable key; remove tombstone; lastTs(address) = timestamp"
+    },
+    {
+      "code": 2,
+      "name": "unregister",
+      "userSigned": true,
+      "checks": ["tsMonotonic", "nameExists", "holderMatches", "regSeqMatches"],
+      "loggedRejections": [],
+      "effect": "remove name record, holder and confusable key; put tombstone (releasedTime = chainTime, regSeq); lastTs(address) = timestamp"
+    },
+    {
+      "code": 3,
+      "name": "expire",
+      "userSigned": false,
+      "checks": ["nameExists", "holderMatches", "credentialMatches", "pledgeGone"],
+      "loggedRejections": [],
+      "effect": "same as unregister, without touching lastTs"
+    },
+    {
+      "code": 4,
+      "name": "reserve",
+      "userSigned": false,
+      "checks": ["reservePublisher", "reserveChain", "reserveDocument", "reserveSeq", "reserveHeight", "reserveKeepsNames"],
+      "loggedRejections": [],
+      "effect": "for every name in the new table that has a registration: remove name record, holder and confusable key, put tombstone (releasedTime = chainTime, regSeq); replace the table; reservedSeq, reservedTx, reservedHeight = those of the document"
+    }
+  ],
+
+  "checkOrder": "evaluate the checks of an op in the listed order; the FIRST failure determines resultCode; rejections listed in loggedRejections are written to the log, all others are dropped at the entrance",
+
+  "resultCodes": {
+    "0": "ok",
+    "10": "labelFormat",
+    "11": "reserved",
+    "12": "confusable",
+    "13": "nameTaken",
+    "14": "cooldown",
+    "15": "tagNotOpen",
+    "20": "addressHasName",
+    "21": "tsNotMonotonic",
+    "30": "pledgeNotMet",
+    "40": "nameNotFound",
+    "41": "holderMismatch",
+    "42": "regSeqMismatch",
+    "43": "credentialMismatch",
+    "44": "pledgeStillValid",
+    "50": "reservePublisherMismatch",
+    "51": "reserveChainMismatch",
+    "52": "reserveDocumentInvalid",
+    "53": "reserveSeqMismatch",
+    "54": "reserveHeightNotIncreasing",
+    "55": "reserveDropsName"
+  },
+
+  "frame": {
+    "magic": "QNSF",
+    "types": {
+      "1": "data",
+      "2": "list",
+      "3": "ack",
+      "4": "heartbeat"
+    },
+    "data": "term u32 | seq u64 | chainTime u64 | result u8 | bytes(op) | hash32(sigHash) | bool(pledgeExists) | str(pledgeAssetId) | u64(pledgeAmount) | hash32(execHash)",
+    "sigHash": "SHA3-256(signature); 32 zero bytes for ops that are not user-signed",
+    "execHash": "SHA3-256(utf8(\"QNS-EXEC\") || prevExecHash || data fields before execHash)",
+    "genesisExecHash": "SHA3-256(utf8(\"QNS-GENESIS\") || protocolHash bytes || utf8(instanceId) || 0x00 || utf8(publisher)); publisher is the empty string when the node is not given protocolTx",
+    "signaturesStoredSeparately": true,
+    "seqStartsAt": 1,
+    "seqContiguous": true
+  },
+
+  "boundary": {
+    "unknownFieldIsFatal": true,
+    "missingFieldIsFatal": true,
+    "noDefaults": true,
+    "undeclaredOperationIsFatal": true,
+    "unimplementedOperationIsFatal": true,
+    "literalParametersForbidden": true,
+    "noFallback": true
+  }
+}

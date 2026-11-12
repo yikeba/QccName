@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QCC-Namespace · 去中心化账户名</title>
+<meta name="description" content="QCC-Namespace：name.tag ↔ ML-DSA-87 地址的抗量子、去中心化账户名系统。">
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --panel2:#f1f3f7; --ink:#14171f; --ink2:#4a5263; --ink3:#7a8294;
+  --line:#e2e6ee; --accent:#3b5bfd; --accent2:#0fb5a6; --warn:#d9822b; --bad:#d64545; --ok:#1f9d55;
+  --code:#0f1420; --codeink:#d6deeb; --radius:14px; --shadow:0 1px 2px rgba(20,23,31,.04),0 6px 24px rgba(20,23,31,.06);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0e14; --panel:#121722; --panel2:#18202e; --ink:#e8ecf4; --ink2:#a9b2c3; --ink3:#77819a;
+  --line:#232c3c; --accent:#7b93ff; --accent2:#2fd3c3; --code:#070a10; --codeink:#d6deeb; --shadow:none;}}
+:root[data-theme="dark"]{
+  --bg:#0b0e14; --panel:#121722; --panel2:#18202e; --ink:#e8ecf4; --ink2:#a9b2c3; --ink3:#77819a;
+  --line:#232c3c; --accent:#7b93ff; --accent2:#2fd3c3; --code:#070a10; --codeink:#d6deeb; --shadow:none;}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+html[lang="zh"] .en, html[lang="en"] .zh{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:18px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;color:var(--ink)}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font:700 13px var(--mono)}
+nav.links{display:flex;gap:18px;margin-left:auto;font-size:14px}
+nav.links a{color:var(--ink2)} nav.links a:hover{color:var(--ink);text-decoration:none}
+.tools{display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:6px 11px;font:600 13px var(--sans);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (max-width:820px){nav.links{display:none}}
+
+.hero{padding:76px 0 40px}
+.eyebrow{font:600 12px var(--mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:clamp(32px,5vw,52px);line-height:1.15;margin:14px 0 16px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{font-size:18px;color:var(--ink2);max-width:720px;margin:0 0 26px}
+.cta{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{padding:10px 16px;border-radius:10px;font-weight:600;font-size:15px}
+.cta a.a1{background:var(--accent);color:#fff} .cta a.a2{border:1px solid var(--line);color:var(--ink);background:var(--panel)}
+.cta a:hover{text-decoration:none;filter:brightness(1.05)}
+.namecard{margin-top:38px;display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.namecard .n{font:700 28px var(--mono);color:var(--ink)} .namecard .n i{font-style:normal;color:var(--accent2)}
+.namecard .arrow{font:600 22px var(--mono);color:var(--ink3)}
+.namecard .addr{font:13px/1.5 var(--mono);color:var(--ink2);word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chips span{font:600 13px var(--mono);padding:5px 11px;border-radius:99px;background:var(--panel);border:1px solid var(--line);color:var(--ink2)}
+.namecard small{display:block;color:var(--ink3);font:12px var(--sans);margin-top:4px}
+@media (max-width:700px){.namecard{grid-template-columns:1fr;text-align:left}.namecard .arrow{transform:rotate(90deg);justify-self:start}}
+
+section{padding:56px 0;border-top:1px solid var(--line)}
+section h2{font-size:28px;margin:0 0 8px;letter-spacing:-.3px}
+section .sub{color:var(--ink2);margin:0 0 28px;max-width:760px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+@media (max-width:860px){.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0;color:var(--ink2);font-size:15px;overflow-wrap:anywhere}
+.ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--panel2);color:var(--accent);margin-bottom:12px}
+.ico svg{width:18px;height:18px}
+
+.steps{counter-reset:s;display:grid;gap:18px}
+.step>div,.grid>*,.live>*,.namecard>*{min-width:0}
+.step{display:grid;grid-template-columns:44px 1fr;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.step .num{counter-increment:s;width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center;font:700 18px var(--mono)}
+.step .num::before{content:counter(s)}
+.step h3{margin:2px 0 6px;font-size:19px}
+.step p{margin:0 0 10px;color:var(--ink2)}
+.step ul{margin:6px 0 10px;padding-left:20px;color:var(--ink2)} .step li{margin:3px 0}
+@media (max-width:600px){.step{grid-template-columns:1fr}}
+
+pre{background:var(--code);color:var(--codeink);border-radius:11px;padding:14px 16px;overflow:auto;font:13px/1.6 var(--mono);margin:10px 0 4px;border:1px solid var(--line)}
+code{font-family:var(--mono);font-size:.92em}
+p code, li code, td code{background:var(--panel2);padding:1px 6px;border-radius:6px;color:var(--ink)}
+.k{color:#82aaff}.s{color:#c3e88d}.c{color:#637777}.v{color:#f78c6c}
+.note{border-left:3px solid var(--accent2);background:var(--panel2);padding:10px 14px;border-radius:0 10px 10px 0;color:var(--ink2);font-size:14.5px;margin:10px 0}
+.note.warn{border-color:var(--warn)}
+
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink3);font-weight:600;font-size:13px}
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;box-shadow:var(--shadow)}
+.pill{display:inline-block;font:600 12px var(--mono);padding:2px 8px;border-radius:99px;background:var(--panel2);color:var(--ink2)}
+.pill.ok{color:var(--ok)} .pill.bad{color:var(--bad)} .pill.warn{color:var(--warn)}
+
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;align-items:stretch}
+.flow .f{background:var(--panel);border:1px solid var(--line);padding:16px;position:relative}
+.flow .f:first-child{border-radius:var(--radius) 0 0 var(--radius)} .flow .f:last-child{border-radius:0 var(--radius) var(--radius) 0}
+.flow .f+.f{border-left:none}
+.flow .f b{display:block;font-size:15px;margin-bottom:4px} .flow .f span{color:var(--ink2);font-size:13.5px}
+.flow .f em{font:600 11px var(--mono);color:var(--accent);font-style:normal;letter-spacing:1px}
+@media (max-width:860px){.flow{grid-template-columns:1fr}.flow .f{border-radius:0!important;border-left:1px solid var(--line)!important}.flow .f+.f{border-top:none}.flow .f:first-child{border-radius:var(--radius) var(--radius) 0 0!important}.flow .f:last-child{border-radius:0 0 var(--radius) var(--radius)!important}}
+
+.live{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+@media (max-width:860px){.live{grid-template-columns:1fr}}
+.field{display:flex;gap:8px;margin:8px 0}
+.field input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:9px;padding:9px 11px;font:14px var(--mono)}
+.field input:focus{outline:2px solid color-mix(in srgb,var(--accent) 40%,transparent);border-color:var(--accent)}
+.out{font:12.5px/1.55 var(--mono);white-space:pre-wrap;word-break:break-all;background:var(--panel2);border-radius:10px;padding:12px;min-height:64px;color:var(--ink2);max-height:340px;overflow:auto}
+.big{font:700 22px var(--mono)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px} .kv dt{color:var(--ink3)} .kv dd{margin:0;font-family:var(--mono);word-break:break-all}
+
+footer{border-top:1px solid var(--line);padding:30px 0 50px;color:var(--ink3);font-size:14px}
+footer .wrap{display:flex;gap:14px 24px;flex-wrap:wrap;align-items:center}
+footer .powered{margin-left:auto}
+.mark{display:inline-grid;place-items:center;color:var(--ink)} .mark svg{width:100%;height:100%;display:block}
+.brand .mark{width:28px;height:28px}
+.powered{display:inline-flex;align-items:center;gap:9px;padding:7px 14px 7px 8px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--ink2);font:600 13px var(--sans);letter-spacing:.3px}
+.powered .mark{width:22px;height:22px} .powered b{color:var(--ink);letter-spacing:1px}
+.powered:hover{border-color:var(--ink3);text-decoration:none}
+.layers{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.layers{grid-template-columns:1fr}}
+.layer{border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:var(--panel);box-shadow:var(--shadow)}
+.layer .tagline{font:600 11px var(--mono);letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3)}
+.layer.res{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 7%,var(--panel)),var(--panel))}
+.layer.res .tagline{color:var(--accent)}
+.layer h3{margin:6px 0 8px;font-size:18px}
+.layer ul{margin:0;padding-left:18px;color:var(--ink2);font-size:14.5px} .layer li{margin:4px 0}
+.resolve{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 4px;font:600 13.5px var(--mono);color:var(--ink2)}
+.resolve span{padding:6px 12px;border-radius:9px;background:var(--panel2);border:1px solid var(--line)}
+.resolve span span{padding:0;border:0;background:none}
+.resolve span.hi{background:color-mix(in srgb,var(--accent) 14%,var(--panel));border-color:color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--ink)}
+.resolve i{font-style:normal;color:var(--ink3)}
+.case{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:16px}
+.case>*{min-width:0}
+@media (max-width:860px){.case{grid-template-columns:1fr}}
+.tl{list-style:none;margin:8px 0 0;padding:0;position:relative}
+.tl li{position:relative;padding:0 0 14px 26px;color:var(--ink2);font-size:14.5px}
+.tl li::before{content:"";position:absolute;left:6px;top:8px;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.tl li::after{content:"";position:absolute;left:10px;top:20px;bottom:-2px;width:1px;background:var(--line)}
+.tl li:last-child::after{display:none}
+.tl b{color:var(--ink);font-weight:600}
+.contact{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;align-items:stretch}
+.contact>*{min-width:0}
+@media (max-width:860px){.contact{grid-template-columns:1fr}}
+.mailcard{display:flex;flex-direction:column;justify-content:space-between;gap:10px;padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);color:var(--ink)}
+.mailcard:hover{border-color:var(--accent);text-decoration:none}
+.mailcard .addr{font:700 18px var(--mono);word-break:break-all}
+.mailcard small{color:var(--ink3);font-size:13px}
+.mailcard .go{font:600 13px var(--sans);color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="#"><span class="mark"><svg viewBox="0 0 407 407" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M182.8 405.9C140.5 401.8 98.2 382.9 66.5 353.9C29.6 320.1 7.8 277.9 1.0 226.7C-1.6 207.1 0.4 176.4 5.6 155.0C14.5 118.9 34.1 84.5 61.0 58.1C91.1 28.5 128.3 9.9 172.5 2.4C185.1 0.2 217.4 -0.1 231.0 1.9C275.4 8.2 315.5 28.3 347.0 59.9C370.1 83.1 385.3 107.4 395.5 137.2C413.6 190.6 409.7 246.2 384.3 296.2C378.7 307.3 367.4 325.0 365.9 325.0C365.5 325.0 361.8 322.0 357.8 318.2C320.7 284.2 318.0 281.6 318.0 279.6C318.0 278.5 320.9 271.7 324.5 264.5C334.5 244.4 339.0 225.5 339.0 203.6C339.0 159.3 318.8 119.8 282.4 92.9C268.4 82.6 244.7 72.8 226.1 69.6C214.0 67.5 192.3 67.5 180.5 69.6C155.6 73.8 133.2 84.5 114.5 100.8C103.9 110.1 98.4 116.2 90.1 128.4C83.7 137.8 82.9 140.7 85.8 143.2C88.8 146.0 131.9 167.0 134.4 167.0C135.9 167.0 137.7 165.9 139.2 164.0C151.1 148.4 157.5 142.7 169.6 136.7C192.2 125.4 218.2 126.1 240.9 138.6C249.2 143.2 263.1 157.1 268.3 166.0C270.4 169.6 273.3 176.1 274.7 180.5C277.1 187.7 277.4 189.9 277.4 203.5C277.4 217.4 277.2 219.1 274.7 226.4C270.3 238.9 265.4 246.6 256.0 256.0C246.5 265.5 238.3 270.7 227.0 274.5C195.9 284.8 162.1 274.0 142.4 247.3C138.2 241.6 136.4 240.0 134.5 240.0C131.8 240.0 86.0 262.5 84.8 264.4C83.1 266.9 84.3 270.0 90.7 279.5C107.2 303.9 133.0 323.5 160.6 332.4C174.6 337.0 181.9 338.2 198.6 338.7C220.7 339.4 239.4 336.1 256.8 328.4C264.8 324.9 266.6 325.2 273.0 331.3C276.0 334.2 287.1 344.4 297.5 353.9C307.9 363.4 316.6 371.5 316.8 371.9C317.1 372.9 300.9 382.2 289.0 387.8C256.7 403.0 219.2 409.4 182.8 405.9Z"/></svg></span><span>QCC-Namespace</span></a>
+  <nav class="links">
+    <a href="#solve"><span class="zh">解决什么</span><span class="en">Why</span></a>
+    <a href="#apps"><span class="zh">应用</span><span class="en">For apps</span></a>
+    <a href="#tags">Tag</a>
+    <a href="#fork"><span class="zh">行业示范</span><span class="en">Template</span></a>
+    <a href="#reserved">Reserved</a>
+    <a href="#why"><span class="zh">特性</span><span class="en">Features</span></a>
+    <a href="#how"><span class="zh">原理</span><span class="en">How it works</span></a>
+    <a href="#guide"><span class="zh">接入指南</span><span class="en">Guide</span></a>
+    <a href="#rules"><span class="zh">规则</span><span class="en">Rules</span></a>
+    <a href="#live"><span class="zh">在线查询</span><span class="en">Try it</span></a>
+    <a href="#nodes"><span class="zh">节点网络</span><span class="en">Nodes</span></a>
+    <a href="ops.html"><span class="zh">运维</span><span class="en">Ops</span></a>
+    <a href="#contact"><span class="zh">联系</span><span class="en">Contact</span></a>
+  </nav>
+  <div class="tools">
+    <button class="btn" id="langBtn">EN</button>
+    <button class="btn" id="themeBtn" aria-label="theme">◐</button>
+  </div>
+</div></header>
+
+<main>
+<div class="wrap hero">
+  <div class="eyebrow">QCC · Namespace · v1.0</div>
+  <h1><span class="zh">账户归用户，<br><span class="grad">不归平台</span></span><span class="en">Accounts that belong to users,<br><span class="grad">not platforms</span></span></h1>
+  <p class="lead"><span class="zh">QCC-Namespace 是去中心化账户体系：<code>名字.tag</code> 直接对应用户自己的 ML-DSA-87 抗量子地址。tag 本身是 QCC 公链上的资产 —— 任何人发起一笔 tag 规则交易，就能拥有自己的 <code>.bank</code>、<code>.love</code>、<code>.cn</code>，永久归属、可以转让。没有平台数据库可以泄露，没有密码可以被撞库；签名私钥万一被盗，撤销一笔质押即可止损。</span><span class="en">QCC-Namespace is a decentralized account system: <code>name.tag</code> maps straight to the user's own ML-DSA-87 post-quantum address. The tag itself is an asset on the QCC chain — anyone can send one tag-rule transaction and own <code>.bank</code>, <code>.love</code> or <code>.cn</code>, permanently and transferably. No platform database to leak, no password to stuff; if a signing key is ever stolen, revoking one pledge stops the damage.</span></p>
+  <div class="cta">
+    <a class="a1" href="#solve"><span class="zh">它解决什么问题</span><span class="en">What it solves</span></a>
+    <a class="a2" href="#guide"><span class="zh">开始接入</span><span class="en">Get started</span></a>
+    <a class="a2" href="#live"><span class="zh">在线查询名称</span><span class="en">Look up a name</span></a>
+    <a class="a2" href="https://test.qccio.com" target="_blank" rel="noopener"><span class="zh">QCC 开发者网站 ↗</span><span class="en">QCC developer site ↗</span></a>
+  </div>
+  <div class="namecard">
+    <div><div class="n">alice<i>.qcc</i></div><small><span class="zh">名字 label + tag（tag 是谁的，由链上交易决定）</span><span class="en">label + tag (who owns the tag is decided on-chain)</span></small></div>
+    <div class="arrow">⟶</div>
+    <div><div class="addr">QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1</div><small><span class="zh">ML-DSA-87 地址（2592 字节公钥，抗量子）</span><span class="en">ML-DSA-87 address (2592-byte public key, post-quantum)</span></small></div>
+  </div>
+  <div class="chips"><span>chen.bank</span><span>tom.love</span><span>shop.cn</span><span>api.osn</span><span>mia.nice</span><span>us.since2016</span><span>alice.qcc</span></div>
+</div>
+
+<section id="solve"><div class="wrap">
+  <h2><span class="zh">Namespace 解决什么问题</span><span class="en">What Namespace solves</span></h2>
+  <p class="sub"><span class="zh">传统账户 = 平台数据库里的一行记录。账户能不能用、会不会被盗、被盗后能不能找回，全部取决于平台。Namespace 把这一行记录搬到用户手里。</span><span class="en">A traditional account is a row in a platform's database. Whether it works, whether it gets stolen, whether you can get it back — all of that is up to the platform. Namespace moves that row into the user's hands.</span></p>
+  <div class="grid g2">
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+      <h3><span class="zh">① 去中心化账户：归属权在用户</span><span class="en">① Decentralized accounts: users own them</span></h3>
+      <p><span class="zh">名字由用户私钥签名注册，链上质押背书，规则写在链上协议里。平台不能封号、改号、没收名字；节点也伪造不了。同一个 <code>alice.qcc</code> 可以登录任何接入的应用，不必在每个平台各开一个账户。</span><span class="en">A name is registered with the user's own signature, backed by an on-chain pledge, under rules anchored on-chain. No platform can ban, rename or confiscate it, and no node can forge it. The same <code>alice.qcc</code> signs in to every integrated app — no account per platform.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+      <h3><span class="zh">② 从根上去掉平台侧的盗号路径</span><span class="en">② Removes the platform-side theft paths</span></h3>
+      <p><span class="zh">没有密码，就没有撞库和弱口令；没有账户数据库，就没有拖库泄露；没有"客服找回"和短信验证码，就没有社工和 SIM 换卡。登录是抗量子签名 + 多节点独立核对，任何人都能复核证据。剩下的风险只在用户自己的签名私钥上，第 ③④ 点专门处理它。</span><span class="en">No password means no credential stuffing or weak passwords; no account database means nothing to breach; no "support recovery" or SMS codes means no social engineering or SIM swaps. Sign-in is a post-quantum signature checked independently by several nodes, and anyone can re-check the evidence. The remaining risk sits in the user's own signing key — which ③ and ④ address.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></div>
+      <h3><span class="zh">③ 被盗也能立即止损：撤销质押</span><span class="en">③ Stop the damage instantly: revoke the pledge</span></h3>
+      <p><span class="zh">名字的有效性每次核验都实时查链。签名私钥一旦泄露，在资产钱包撤销授权质押，名字立刻变成 <span class="pill warn">REVOKED</span>，所有接入的应用在下一次核验时一起拒绝它，不需要联系任何平台。名字随后被回收并进入冷却期，期间谁都不能注册。</span><span class="en">Every verification re-checks the pledge on-chain. If a signing key leaks, revoke the pledge from the asset wallet: the name turns <span class="pill warn">REVOKED</span> at once and every integrated app rejects it on its next check — no platform to call. The name is then reclaimed and enters a cooldown during which nobody can register it.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="8" height="12" rx="2"/><rect x="13" y="6" width="8" height="12" rx="2"/><path d="M11 12h2"/></svg></div>
+      <h3><span class="zh">④ 双钱包分离：服务器间也能安全鉴权</span><span class="en">④ Two-wallet model: safe server-to-server auth</span></h3>
+      <p><span class="zh"><b>资产钱包</b>离线保管、只负责质押与撤销；<b>签名钱包</b>是 0 资产地址，放在 App 或服务器里日常签名。服务器用自己的名字（如 <code>api.osn</code>）和签名钱包互相鉴权：密钥放在服务器上，泄露了也动不了资产，撤销质押就能吊销这台服务器的身份。</span><span class="en">The <b>asset wallet</b> stays offline and only pledges or revokes; the <b>signing wallet</b> holds zero assets and signs day-to-day inside an app or a server. Servers authenticate each other by their own names (e.g. <code>api.osn</code>) and signing wallets: a key on a server, if leaked, cannot move funds, and revoking the pledge retires that server's identity.</span></p></div>
+  </div>
+  <h3 style="margin:30px 0 4px;font-size:20px"><span class="zh">从经济模型上让盗号无利可图</span><span class="en">Making account theft unprofitable by design</span></h3>
+  <p class="sub" style="margin-bottom:16px"><span class="zh">盗号是生意：成本低、规模大、能变现，才有人做。Namespace 同时打掉这三点。</span><span class="en">Account theft is a business: it pays when it is cheap, scalable and easy to cash out. Namespace removes all three.</span></p>
+  <div class="grid g3">
+    <div class="card"><h3><span class="zh">批量 → 逐个</span><span class="en">Bulk → one by one</span></h3>
+      <p><span class="zh">平台被拖库一次就是几百万个账户，攻击成本摊到每个账户几乎为零。这里没有中心数据库，攻击者只能一台设备一台设备地攻破，成本随账户数线性增长。</span><span class="en">One platform breach yields millions of accounts at near-zero cost each. With no central database, an attacker must compromise devices one at a time — cost grows linearly with every account.</span></p></div>
+    <div class="card"><h3><span class="zh">盗了也难变现</span><span class="en">Hard to cash out</span></h3>
+      <p><span class="zh">签名钱包是 0 资产地址，拿到私钥也转不走一分钱；质押锁在资产钱包名下，只有资产钱包能撤销。名字绑定地址，没有"过户"操作，无法转卖。</span><span class="en">The signing wallet holds zero assets, so its key moves no funds; the pledge stays under the asset wallet, which alone can revoke it. A name is bound to its address with no transfer operation, so it cannot be resold.</span></p></div>
+    <div class="card"><h3><span class="zh">可用窗口极短</span><span class="en">A tiny window</span></h3>
+      <p><span class="zh">用户发现异常，撤销一笔质押，名字在全网立即失效，不用排队等客服。盗来的身份能用的时间以分钟计，期望收益随之趋近于零。</span><span class="en">Once the user notices, one revoke invalidates the name network-wide — no support queue. A stolen identity is usable for minutes, so its expected value approaches zero.</span></p></div>
+  </div>
+  <p class="sub" style="margin:12px 0 0;font-size:14px"><span class="zh">反过来，造假号也有真实成本：每个名字都要锁定 ≥1 QCC 的质押，批量注册僵尸号、囤名的成本随数量线性上升。高价值的定向攻击仍然可能发生，但大规模、低成本的盗号产业在这里没有土壤。</span><span class="en">Conversely, fake accounts cost real money: every name locks ≥1 QCC, so bot farms and name hoarding scale linearly in cost. Targeted attacks on high-value identities remain possible, but cheap, mass-scale account theft has nothing to grow on.</span></p>
+
+  <div class="tbl" style="margin-top:16px"><table>
+    <tr><th></th><th><span class="zh">传统账户（平台）</span><span class="en">Traditional (platform)</span></th><th>QCC-Namespace</th></tr>
+    <tr><td><span class="zh">账户归属</span><span class="en">Ownership</span></td><td><span class="zh">平台数据库</span><span class="en">Platform database</span></td><td><span class="zh">用户私钥 + 链上质押</span><span class="en">User key + on-chain pledge</span></td></tr>
+    <tr><td><span class="zh">登录凭证</span><span class="en">Credential</span></td><td><span class="zh">密码 / 短信验证码</span><span class="en">Password / SMS code</span></td><td><span class="zh">ML-DSA-87 签名（抗量子）</span><span class="en">ML-DSA-87 signature (post-quantum)</span></td></tr>
+    <tr><td><span class="zh">撞库 · 拖库 · 社工 · SIM 换卡</span><span class="en">Stuffing · breach · social eng. · SIM swap</span></td><td><span class="pill bad"><span class="zh">存在</span><span class="en">exposed</span></span></td><td><span class="pill ok"><span class="zh">不存在这些路径</span><span class="en">no such path</span></span></td></tr>
+    <tr><td><span class="zh">谁能证明账户归属</span><span class="en">Who can prove ownership</span></td><td><span class="zh">只有平台</span><span class="en">Only the platform</span></td><td><span class="zh">任何人，独立核验签名与链上质押</span><span class="en">Anyone, by checking the signature and pledge</span></td></tr>
+    <tr><td><span class="zh">盗号的经济性</span><span class="en">Economics of theft</span></td><td><span class="zh">一次拖库，百万账户；可转卖</span><span class="en">One breach, millions of accounts; resellable</span></td><td><span class="zh">逐个攻破、0 资产、不可转让、分钟级失效</span><span class="en">One by one, zero assets, non-transferable, dead in minutes</span></td></tr>
+    <tr><td><span class="zh">注册假号</span><span class="en">Fake accounts</span></td><td><span class="zh">几乎免费</span><span class="en">Nearly free</span></td><td><span class="zh">每个名字锁定 ≥1 QCC</span><span class="en">Each name locks ≥1 QCC</span></td></tr>
+    <tr><td><span class="zh">被盗后止损</span><span class="en">After theft</span></td><td><span class="zh">联系客服，等待处理</span><span class="en">Contact support and wait</span></td><td><span class="zh">撤销质押，立即全网失效</span><span class="en">Revoke the pledge, invalid everywhere at once</span></td></tr>
+    <tr><td><span class="zh">服务器间鉴权</span><span class="en">Server-to-server</span></td><td><span class="zh">API Key / 证书，泄露难察觉</span><span class="en">API keys / certificates, leaks go unnoticed</span></td><td><span class="zh">服务器名字 + 0 资产签名钱包，可随时吊销</span><span class="en">Server name + zero-balance signing wallet, revocable anytime</span></td></tr>
+  </table></div>
+  <div class="note"><span class="zh">诚实的边界：Namespace 去掉的是<b>平台侧</b>的盗号路径。用户设备被入侵、或在钓鱼页面上签了名，签名私钥仍可能被利用 —— 所以有第 ③④ 点：私钥只放在 0 资产的签名钱包里，并且可以一键吊销。助记词与资产钱包请离线保管。</span><span class="en">Honest boundary: Namespace removes the <b>platform-side</b> theft paths. If a user's device is compromised or they sign on a phishing page, the signing key can still be abused — which is why ③ and ④ exist: the key lives only in a zero-balance signing wallet and can be revoked in one step. Keep the mnemonic and asset wallet offline.</span></div>
+</div></section>
+
+<section id="apps"><div class="wrap">
+  <h2><span class="zh">对应用运营方的好处</span><span class="en">What apps gain</span></h2>
+  <p class="sub"><span class="zh">接入 QCC-Auth，应用不再需要自己维护一套账户系统 —— 账户、凭证、找回、吊销都由用户和链来承担。</span><span class="en">With QCC-Auth an app no longer runs its own account system — accounts, credentials, recovery and revocation are carried by the user and the chain.</span></p>
+  <div class="grid g3">
+    <div class="card"><h3><span class="zh">省掉短信验证码</span><span class="en">No SMS verification</span></h3>
+      <p><span class="zh">注册、登录、找回都不用发短信：没有按条计费，没有国际短信的高价，也没有"短信轰炸 / 刷量"欺诈带来的账单。</span><span class="en">No SMS for sign-up, sign-in or recovery: no per-message fees, no international SMS rates, and no bills from SMS-pumping fraud.</span></p></div>
+    <div class="card"><h3><span class="zh">不存密码，不存手机号</span><span class="en">No passwords, no phone numbers</span></h3>
+      <p><span class="zh">数据库里只有名字和公开地址，没有可泄露的密码哈希和个人信息，个人数据合规的负担和泄露事故的责任都大幅下降。</span><span class="en">The database holds only names and public addresses — no password hashes or personal data to leak — cutting data-protection burden and breach liability.</span></p></div>
+    <div class="card"><h3><span class="zh">天然防机器人、防薅羊毛</span><span class="en">Built-in anti-bot, anti-abuse</span></h3>
+      <p><span class="zh">每个名字背后锁着链上质押，应用还能设自己的门槛（如质押 ≥ 10 QCC 才能领补贴）。批量注册小号的成本随数量线性上升。</span><span class="en">Every name has an on-chain pledge behind it, and apps can set their own bar (e.g. ≥ 10 QCC to claim a promotion). Farming accounts costs more with every account.</span></p></div>
+    <div class="card"><h3><span class="zh">一个名字，所有应用</span><span class="en">One name, every app</span></h3>
+      <p><span class="zh">用户不必在每个应用重新注册，接入即可登录，转化率更高。也不依赖 Apple / Google 账号登录，不受平台政策、封号和地区限制影响。</span><span class="en">Users sign in without signing up again, which lifts conversion — and without depending on Apple or Google sign-in, platform policies, bans or regional limits.</span></p></div>
+    <div class="card"><h3><span class="zh">身份与收款合一</span><span class="en">Identity and payments in one</span></h3>
+      <p><span class="zh">登录用的名字同时就是收款地址：转账给 <code>chen.qcc</code>，不用再绑定银行卡或另记一串地址。</span><span class="en">The name you sign in with is also where you get paid: send to <code>chen.qcc</code>, no card binding, no extra address to copy.</span></p></div>
+    <div class="card"><h3><span class="zh">不可抵赖、可审计</span><span class="en">Non-repudiable, auditable</span></h3>
+      <p><span class="zh">每次登录和授权都是用户的抗量子签名，事后可以向任何第三方证明"是本人操作"，适合金融、企业、政务场景的审计要求。</span><span class="en">Every sign-in and approval is the user's post-quantum signature, provable to any third party afterwards — fit for audit needs in finance, enterprise and government.</span></p></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><h3><span class="zh">不用做"找回账户"</span><span class="en">No account recovery desk</span></h3>
+      <p><span class="zh">没有忘记密码，没有客服核实身份。用户丢了签名钱包，用资产钱包撤销质押、换新钱包重新授权即可，应用侧零工作量。</span><span class="en">No forgotten passwords, no identity checks by support. If a user loses the signing wallet, they revoke from the asset wallet and authorize a new one — zero work on the app side.</span></p></div>
+    <div class="card"><h3><span class="zh">长期安全：抗量子</span><span class="en">Long-term safety: post-quantum</span></h3>
+      <p><span class="zh">签名采用 ML-DSA-87（NIST 标准最高等级），现在接入，不必等量子计算机出现后再迁移整套账户体系。</span><span class="en">Signatures use ML-DSA-87 (the highest NIST level). Integrate once — no need to migrate the whole account system when quantum computers arrive.</span></p></div>
+  </div>
+</div></section>
+
+<section id="tags"><div class="wrap">
+  <h2><span class="zh">Tag：你自己的命名空间</span><span class="en">Tags: a namespace of your own</span></h2>
+  <p class="sub"><span class="zh">在传统互联网，<code>.com</code>、<code>.cn</code> 由机构分配、按年续费，随时可能被收回。在 QCC 上，tag 是链上资产：谁发起交易，就归谁。</span><span class="en">On the traditional internet, <code>.com</code> and <code>.cn</code> are allocated by institutions, renewed yearly and can be taken back. On QCC a tag is an on-chain asset: whoever sends the transaction owns it.</span></p>
+  <div class="grid g3">
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></div>
+      <h3><span class="zh">任何人都能注册 tag</span><span class="en">Anyone can register a tag</span></h3>
+      <p><span class="zh">在 QCC 公链发起一笔用户规则（tag）交易，费用最高 100 QCC，就能拿到想要的 tag：<code>.com</code>、<code>.cn</code>、<code>.bank</code>、<code>.nice</code>、<code>.love</code>……不需要任何机构审批。</span><span class="en">Send one user-rule (tag) transaction on the QCC chain — at most 100 QCC in fees — and the tag is yours: <code>.com</code>, <code>.cn</code>, <code>.bank</code>, <code>.nice</code>, <code>.love</code>… no institution to approve it.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div>
+      <h3><span class="zh">永久归属，不用续费</span><span class="en">Owned for good, no renewals</span></h3>
+      <p><span class="zh">注册成功后，tag 永久归属交易发起方。没有年费、没有到期、没有人能收回 —— 所有权就写在链上，任何人可查。</span><span class="en">Once registered, the tag belongs to the sender permanently. No annual fee, no expiry, nobody to take it back — ownership is on-chain for anyone to check.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></div>
+      <h3><span class="zh">可以转让</span><span class="en">Transferable</span></h3>
+      <p><span class="zh">通过 tag 转让交易，把所有权转给另一个地址。品牌、社区、家庭都可以把自己的 tag 当作资产来经营和传承。</span><span class="en">A tag-transfer transaction moves ownership to another address. Brands, communities and families can run and pass on their tag as an asset.</span></p></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3><span class="zh">不只是域名后缀，也可以是一段故事</span><span class="en">Not just a suffix — it can be a story</span></h3>
+    <p><span class="zh">tag 可以是公司、城市、行业，也可以是你的爱情、你的经历：<code>us.since2016</code>、<code>mia.ourwedding</code>、<code>dad.forever</code>。它记在一条不会消失的链上，签名证明它属于你。</span><span class="en">A tag can be a company, a city, an industry — or your love story, your journey: <code>us.since2016</code>, <code>mia.ourwedding</code>, <code>dad.forever</code>. It lives on a chain that does not disappear, and a signature proves it is yours.</span></p>
+  </div>
+  <div class="note"><span class="zh">在 QCC 钱包「标签创建规则交易」里输入未被注册的 tag，签名即可创建，现在就能用。namespace 节点开放哪些 tag 由节点配置决定，测试网目前开放 <code>.qcc</code> / <code>.osn</code> / <code>.com</code>。名字目前限小写字母、数字和连字符。</span><span class="en">Create any unregistered tag today from the "Tag rule" transaction in the QCC wallet — just sign it. Which tags a namespace network accepts is a node configuration; the testnet currently accepts <code>.qcc</code> / <code>.osn</code> / <code>.com</code>. Names are currently limited to lowercase letters, digits and hyphens.</span></div>
+</div></section>
+
+<section id="fork"><div class="wrap">
+  <h2><span class="zh">开源行业示范：一个 tag，一套账户体系</span><span class="en">An open industry template: one tag, one account system</span></h2>
+  <p class="sub"><span class="zh">Namespace 是开源的参考实现。任何行业都可以 fork 一份，换成自己的 tag 和资产，几乎不用改代码，就得到一套属于自己生态的去中心化账户体系。</span><span class="en">Namespace is an open-source reference implementation. Any industry can fork it, swap in its own tag and asset with almost no code changes, and get a decentralized account system for its own ecosystem.</span></p>
+  <div class="card">
+      <h3><span class="zh">例：一款游戏的账户体系</span><span class="en">Example: a game's account system</span></h3>
+      <ul style="margin:6px 0 10px;padding-left:20px;color:var(--ink2)">
+        <li><span class="zh">在 QCC 链上注册 <code>.game</code> tag，发行游戏资产 GAME</span><span class="en">Register the <code>.game</code> tag on QCC and issue the GAME asset</span></li>
+        <li><span class="zh">fork namespace，只改协议 JSON：玩家质押 10 GAME 即可注册 <code>hero.game</code></span><span class="en">Fork namespace and change only the protocol JSON: players pledge 10 GAME to register <code>hero.game</code></span></li>
+        <li><span class="zh">质押 ≥100 GAME 自动成为 VIP；游戏内装备、道具都用 GAME 资产交换</span><span class="en">Pledging ≥100 GAME makes a VIP automatically; in-game items trade as GAME assets</span></li>
+        <li><span class="zh">游戏服务器接入 QCC-Auth：登录即鉴权，可按等级提供服务，也可以对违规账户停止服务</span><span class="en">Game servers plug in QCC-Auth: sign-in is authentication, service follows the tier, and rule-breaking accounts can be cut off</span></li>
+      </ul>
+      <pre><span class="c">// fork 后的协议 JSON：只改这里</span>
+<span class="k">"params"</span>: { <span class="k">"pledgeTag"</span>: <span class="s">"game"</span>, … },
+<span class="k">"tags"</span>:   { <span class="k">"game"</span>: { <span class="k">"assetId"</span>: <span class="s">"GAME"</span>, <span class="k">"minAmount"</span>: <span class="v">10</span> } }
+
+<span class="c">// 管理名 gm.game / admin.game：由协议发布者另发一份 Reserved（见下文），随时换人，不改协议</span>
+
+<span class="c">// 游戏服务器的 qccauth.json</span>
+<span class="k">"require"</span>: { <span class="k">"tags"</span>: [<span class="s">"game"</span>],
+             <span class="k">"pledge"</span>: { <span class="k">"tag"</span>: <span class="s">"game"</span>, <span class="k">"assetId"</span>: <span class="s">"GAME"</span>, <span class="k">"minAmount"</span>: <span class="v">10</span> },
+             <span class="k">"tiers"</span>:  { <span class="k">"vip"</span>: <span class="v">100</span> } }</pre>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3><span class="zh">行业自己定规则</span><span class="en">Each industry sets its rules</span></h3>
+      <p><span class="zh">准入门槛、等级写在自己的链上协议里，管理名由发布者的 Reserved 决定。需要实名的金融场景，可以在 fork 里加上 KYC；社交、内容、游戏可以完全匿名。</span><span class="en">Entry bar and tiers live in its own on-chain protocol; management names come from the publisher's Reserved. Finance can add KYC in its fork; social, content and games can stay fully pseudonymous.</span></p></div>
+    <div class="card"><h3><span class="zh">账户归用户，服务归应用</span><span class="en">Users own accounts, apps own service</span></h3>
+      <p><span class="zh">应用可以对某个账户停止服务，但名字仍属于用户，在其他应用照常可用。应用管得了自己的服务，管不了用户的身份。</span><span class="en">An app can stop serving an account, but the name stays the user's and keeps working elsewhere. Apps control their service, not the user's identity.</span></p></div>
+    <div class="card"><h3><span class="zh">资产就是会员体系</span><span class="en">The asset is the membership</span></h3>
+      <p><span class="zh">质押多少就是什么等级，链上可查、不能伪造。不用单独开发会员、积分、等级系统。</span><span class="en">How much you pledge is your tier — verifiable on-chain, impossible to fake. No separate membership, points or tier system to build.</span></p></div>
+  </div>
+</div></section>
+
+<section id="reserved"><div class="wrap">
+  <h2><span class="zh">Reserved：企业级 namespace 的管理边界</span><span class="en">Reserved: the management boundary of an enterprise namespace</span></h2>
+  <p class="sub"><span class="zh">公开的 namespace 人人可注册、先到先得，协议里不内置任何保留名。企业需要 <code>admin</code>、<code>support</code>、<code>audit</code> 这样的内部管理名，而且要能随时换人 —— 这些名字写死在协议里，换一次人就要发一版新协议。Reserved 把管理名从协议里拿出来：由协议发布者单独签名上链，名字对应的地址随时可以更新。</span><span class="en">A public namespace is open to everyone, first come first served, with no reserved names built into the protocol. An enterprise needs internal management names such as <code>admin</code>, <code>support</code> and <code>audit</code>, and must be able to reassign them at any time — hard-coding them into the protocol would mean a new protocol for every staff change. Reserved takes management names out of the protocol: the protocol publisher signs and anchors them separately, and the address behind each name can be updated at any time.</span></p>
+
+  <div class="layers">
+    <div class="layer">
+      <div class="tagline"><span class="zh">没有 Reserved</span><span class="en">Without Reserved</span></div>
+      <h3><span class="zh">完全公开的 namespace</span><span class="en">A fully public namespace</span></h3>
+      <ul>
+        <li><span class="zh">任何人可以注册任何名字，包括 <code>admin.qcc</code></span><span class="en">Anyone can register any name, including <code>admin.qcc</code></span></li>
+        <li><span class="zh">先到先得，名字归持有人，谁都收不走</span><span class="en">First come first served; the name belongs to its holder and nobody can take it</span></li>
+        <li><span class="zh">适合个人身份、社区、开放生态</span><span class="en">Suited to personal identity, communities, open ecosystems</span></li>
+      </ul>
+    </div>
+    <div class="layer res">
+      <div class="tagline"><span class="zh">有 Reserved</span><span class="en">With Reserved</span></div>
+      <h3><span class="zh">企业级 namespace</span><span class="en">An enterprise namespace</span></h3>
+      <ul>
+        <li><span class="zh">管理名由协议发布者指定给某个地址，别人不能注册，形近名也不行</span><span class="en">The publisher assigns management names to addresses; nobody else can register them, nor anything confusable with them</span></li>
+        <li><span class="zh">优先于注册信息：员工离职不需要他配合，发布者单方面换人</span><span class="en">Takes precedence over registrations: a departing employee need not cooperate — the publisher reassigns alone</span></li>
+        <li><span class="zh">普通名字照常注册，规则不变</span><span class="en">Ordinary names register as before, same rules</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="resolve">
+    <span><span class="zh">查询 name</span><span class="en">look up name</span></span><i>→</i>
+    <span class="hi"><span class="zh">① 当前生效的 Reserved 表</span><span class="en">① effective Reserved table</span></span><i><span class="zh">没有才</span><span class="en">only if absent</span> →</i>
+    <span><span class="zh">② 注册表（签名 + 质押）</span><span class="en">② registry (signature + pledge)</span></span>
+  </div>
+
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+      <h3><span class="zh">只有发布者能发</span><span class="en">Only the publisher</span></h3>
+      <p><span class="zh">谁发布了 qcc-name 协议，谁就是 Reserved 的发布者：节点取回协议所在交易，交易的 <code>from</code> 就是唯一能发 Reserved 的地址。不新增任何信任根。</span><span class="en">Whoever published the qcc-name protocol publishes Reserved: nodes fetch the protocol transaction, and its <code>from</code> is the only address allowed to publish Reserved. No new root of trust.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+      <h3><span class="zh">历史全部保留</span><span class="en">Full history kept</span></h3>
+      <p><span class="zh">每一版都是完整的表，<code>seq</code> 逐版加 1，<code>prevTx</code> 指向上一版的交易，按区块高度生效。任何时刻谁是 admin，都能在链上查到、可以审计。</span><span class="en">Every version is a complete table; <code>seq</code> increases by one, <code>prevTx</code> points to the previous transaction, and the block height decides when it takes effect. Who was admin at any moment is on-chain and auditable.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/></svg></div>
+      <h3><span class="zh">全网同时切换</span><span class="en">The whole network switches together</span></h3>
+      <p><span class="zh">主节点向多个 QCC 链节点取回交易并一致确认后，写入一条 reserve 日志；其他节点从日志同步。所有节点在同一个点切换，不受各自读链快慢影响。</span><span class="en">The primary fetches the transaction from several QCC chain nodes, confirms they agree, and writes one reserve entry to the log; other nodes sync it. Every node switches at the same point, regardless of when it reads the chain.</span></p></div>
+  </div>
+
+  <div class="case">
+    <div class="card">
+      <h3><span class="zh">上链内容（QCCData 交易的 payload）</span><span class="en">On-chain content (QCCData payload)</span></h3>
+      <pre><span class="c">// 第 1 版：发布者地址签名上链</span>
+{
+  <span class="k">"protocol"</span>: <span class="s">"qcc-name-reserved"</span>,
+  <span class="k">"version"</span>: <span class="s">"1.0.0"</span>,
+  <span class="k">"nameProtocolHash"</span>: <span class="s">"1171541a…ac127"</span>,
+  <span class="k">"seq"</span>: <span class="v">1</span>,
+  <span class="k">"prevTx"</span>: <span class="s">""</span>,
+  <span class="k">"names"</span>: {
+    <span class="k">"admin.xbank"</span>:   <span class="s">"QAaa…"</span>,
+    <span class="k">"audit.xbank"</span>:   <span class="s">"QBbb…"</span>,
+    <span class="k">"support.xbank"</span>: <span class="s">"QCcc…"</span>,
+    <span class="k">"risk.xbank"</span>:    <span class="s">""</span>       <span class="c">// 保留，暂不绑定</span>
+  },
+  <span class="k">"release"</span>: []
+}
+
+<span class="c">// 第 2 版：admin 换人、risk 绑定、support 释放</span>
+  <span class="k">"seq"</span>: <span class="v">2</span>,  <span class="k">"prevTx"</span>: <span class="s">"&lt;第 1 版交易 hash&gt;"</span>,
+  <span class="k">"names"</span>: { <span class="k">"admin.xbank"</span>: <span class="s">"QDdd…"</span>, <span class="k">"audit.xbank"</span>: <span class="s">"QBbb…"</span>, <span class="k">"risk.xbank"</span>: <span class="s">"QEee…"</span> },
+  <span class="k">"release"</span>: [<span class="s">"support.xbank"</span>]</pre>
+      <div class="note"><span class="zh">节点侧只需两步：<code>qccname.properties</code> 填 <code>protocolTx</code>；把每一版的交易 hash 追加到 <code>Reserved.config</code>（一行一个），30 秒内全网生效。<code>GET /v1/reserved</code> 查看当前表与全部历史。</span><span class="en">On the node side, two steps: set <code>protocolTx</code> in <code>qccname.properties</code>; append each version's transaction hash to <code>Reserved.config</code> (one per line) — live across the network within 30 seconds. <code>GET /v1/reserved</code> shows the current table and full history.</span></div>
+    </div>
+    <div class="card">
+      <h3><span class="zh">规则</span><span class="en">Rules</span></h3>
+      <div class="tbl" style="box-shadow:none;margin-top:8px"><table>
+        <tr><td><span class="zh">优先级</span><span class="en">Precedence</span></td><td><span class="zh">表中的名字按表回答，不看注册信息；已注册的同名名字被移除并进入冷却期</span><span class="en">Names in the table answer from the table; an existing registration of the same name is removed and enters cooldown</span></td></tr>
+        <tr><td><span class="zh">注册</span><span class="en">Registration</span></td><td><span class="zh">表中的名字及其形近名（如 <code>adrnin</code>）一律不能注册</span><span class="en">Names in the table and their confusables (e.g. <code>adrnin</code>) cannot be registered</span></td></tr>
+        <tr><td><span class="zh">空地址</span><span class="en">Empty address</span></td><td><span class="zh">保留但不绑定，查询结果为不存在</span><span class="en">Reserved but unbound; lookups report not found</span></td></tr>
+        <tr><td>release</td><td><span class="zh">从表中去掉名字必须写进 release 才重新开放，防止误删后被抢注</span><span class="en">Dropping a name requires listing it in release to reopen it — no accidental squatting</span></td></tr>
+        <tr><td><span class="zh">顺序</span><span class="en">Order</span></td><td><span class="zh">seq +1、prevTx 衔接、区块高度严格递增；交易时间戳由发送方自填，不参与排序</span><span class="en">seq +1, prevTx chained, block height strictly increasing; the sender-set tx timestamp is never used for ordering</span></td></tr>
+        <tr><td><span class="zh">规模</span><span class="en">Scale</span></td><td><span class="zh">适合几十到几百个管理名；海量客户账户走普通注册</span><span class="en">Meant for tens to hundreds of management names; millions of customer accounts use ordinary registration</span></td></tr>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3><span class="zh">案例：一家商业银行用 namespace 完成抗量子迁移</span><span class="en">Case: a commercial bank migrates to post-quantum with namespace</span></h3>
+    <p><span class="zh">以虚构的 X 银行为例。它不需要重建核心账本，只要给现有账户套上一层抗量子身份：</span><span class="en">Take a fictional X Bank. It does not rebuild its core ledger — it wraps existing accounts in a post-quantum identity:</span></p>
+    <div class="grid g2" style="margin-top:10px">
+      <ol class="tl">
+        <li><b><span class="zh">注册 tag</span><span class="en">Register a tag</span></b><br><span class="zh">在 QCC 链上注册 <code>.xbank</code>，部署自己的 namespace 节点（私有部署，节点只由银行运营）。</span><span class="en">Register <code>.xbank</code> on QCC and run its own namespace nodes (private, operated only by the bank).</span></li>
+        <li><b><span class="zh">发布协议与 Reserved</span><span class="en">Publish protocol and Reserved</span></b><br><span class="zh">用多签冷钱包发布 qcc-name 协议，同一地址发布第 1 版 Reserved：<code>admin</code>、<code>audit</code>、<code>risk</code>、<code>ops</code>、<code>support</code>。</span><span class="en">A multi-sig cold wallet publishes the qcc-name protocol; the same address publishes Reserved v1: <code>admin</code>, <code>audit</code>, <code>risk</code>, <code>ops</code>, <code>support</code>.</span></li>
+        <li><b><span class="zh">同步现有账户</span><span class="en">Sync existing accounts</span></b><br><span class="zh">客户账户按映射规则普通注册，如 <code>a6222020012345678.xbank</code> → 客户的 ML-DSA-87 地址。旧账本不动，身份层先抗量子。</span><span class="en">Customer accounts register normally under a mapping rule, e.g. <code>a6222020012345678.xbank</code> → the customer's ML-DSA-87 address. The old ledger stays; the identity layer goes post-quantum first.</span></li>
+        <li><b><span class="zh">员工变动</span><span class="en">Staff changes</span></b><br><span class="zh">风控主管离职：发布第 2 版 Reserved，把 <code>risk.xbank</code> 指向接任者。交易确认后全网立即切换，旧地址同时失效，不需要离职员工配合，也不用改协议。</span><span class="en">The head of risk leaves: Reserved v2 points <code>risk.xbank</code> to the successor. Once confirmed, the whole network switches and the old address stops working — no cooperation from the departing employee, no protocol change.</span></li>
+        <li><b><span class="zh">审计</span><span class="en">Audit</span></b><br><span class="zh">监管或内审可以逐版核对：每一版的发布地址、区块高度、内容 hash 都在链上。</span><span class="en">Regulators and internal audit can check every version: publisher, block height and content hash are all on-chain.</span></li>
+      </ol>
+      <div>
+        <div class="note"><span class="zh"><b>安全边界分开管</b>：namespace 只核对「Reserved 来自协议发布地址」。发布地址本身的安全（多签、冷钱包、审批流程）是链上账户的安全，与 namespace 解耦 —— 高安全企业用多签即可。</span><span class="en"><b>Separate security boundaries</b>: namespace only checks "Reserved comes from the protocol publisher". Securing that address (multi-sig, cold storage, approval flows) is a chain-account matter, decoupled from namespace — high-security enterprises just use multi-sig.</span></div>
+        <div class="note"><span class="zh"><b>同样适用于</b>：企业邮箱（<code>admin@</code>、<code>support@</code> 跟随 Reserved 换人）、游戏 GM 账号、券商与支付机构的运营账号、政府与学校的机构账号。</span><span class="en"><b>Also fits</b>: company mail (<code>admin@</code> and <code>support@</code> follow Reserved), game GM accounts, operator accounts at brokers and payment firms, institutional accounts at governments and schools.</span></div>
+        <div class="note warn"><span class="zh">本案例中的「X 银行」与 <code>.xbank</code> 均为虚构示例。</span><span class="en">"X Bank" and <code>.xbank</code> in this case are fictional examples.</span></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<section id="paper"><div class="wrap">
+  <h2><span class="zh">白皮书与开源</span><span class="en">Whitepaper and source</span></h2>
+  <div class="grid g2">
+    <div class="card"><h3><span class="zh">QCC-Namespace 白皮书</span><span class="en">QCC-Namespace whitepaper</span></h3>
+      <p><span class="zh">完整阐述去中心化账户体系的设计：tag 资产、授权质押、双钱包模型、盗号经济学、鉴权协议 qcc-auth/1、节点共识与可验证性。即将发布。</span><span class="en">The full design of the decentralized account system: tag assets, authorized pledges, the two-wallet model, the economics of theft, the qcc-auth/1 protocol, node consensus and verifiability. Coming soon.</span></p>
+      <p style="margin-top:12px"><span class="pill"><span class="zh">即将发布</span><span class="en">coming soon</span></span></p></div>
+    <div class="card"><h3><span class="zh">开源组件</span><span class="en">Open-source components</span></h3>
+      <p><span class="zh"><b>qccname</b>：namespace 节点（单个 jar）。<b>qccauth</b>：应用鉴权组件，一份 JSON 配置接入。<b>Flutter 客户端</b>：注册、验证、授权登录示例。全部纯 Java / Dart，无第三方依赖。</span><span class="en"><b>qccname</b>: the namespace node (one jar). <b>qccauth</b>: the app auth component, configured by one JSON file. <b>Flutter client</b>: register, verify and sign-in samples. Pure Java / Dart, no third-party dependencies.</span></p>
+      <p style="margin-top:12px"><span class="pill"><span class="zh">即将发布</span><span class="en">coming soon</span></span></p></div>
+  </div>
+</div></section>
+
+<section id="why"><div class="wrap">
+  <h2><span class="zh">技术特性</span><span class="en">Technical features</span></h2>
+  <p class="sub"><span class="zh">抗量子地址很长，没人记得住，也很容易抄错。传统用户名又掌握在平台手里。Namespace 让名字归用户自己所有：规则写在链上，结果人人可验。</span><span class="en">Post-quantum addresses are long, impossible to remember and easy to mistype. Traditional usernames belong to platforms. Namespace makes names belong to their users: the rules live on-chain and the results are verifiable by anyone.</span></p>
+  <div class="grid g3">
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></div>
+      <h3><span class="zh">抗量子签名</span><span class="en">Post-quantum signatures</span></h3>
+      <p><span class="zh">注册、删除都由用户的 ML-DSA-87 私钥签名，与 QCC 链使用同一套密码学。</span><span class="en">Every register / unregister is signed with the user's ML-DSA-87 key — the same cryptography as the QCC chain.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div>
+      <h3><span class="zh">结果可验证（L1）</span><span class="en">Verifiable results (L1)</span></h3>
+      <p><span class="zh">查询结果附带用户原始签名与签名原文。客户端自己验签，不需要信任任何节点。</span><span class="en">Lookups return the user's original signature and signed string. Clients verify it themselves — no node needs to be trusted.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div>
+      <h3><span class="zh">质押防抢注</span><span class="en">Pledge-backed, anti-squatting</span></h3>
+      <p><span class="zh">注册前必须先做授权质押（≥1 QCC）。撤销质押，名字随之失效并回收，批量囤名有真实成本。</span><span class="en">An authorized pledge (≥1 QCC) is required. Revoke it and the name lapses and is reclaimed — hoarding names has a real cost.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+      <h3><span class="zh">协议上链</span><span class="en">Protocol on-chain</span></h3>
+      <p><span class="zh">全部规则（格式、形近字、冷却期、Reserved 的发布规则）写在引导协议里，以 hash 锚定在 QCC 链上，节点按 hash 加载。</span><span class="en">All rules (format, confusables, cooldown, how Reserved is published) live in a bootstrap protocol anchored on QCC by hash; nodes load it by hash.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5l3 8.5M16 7.5l-3 8.5M8.5 6h7"/></svg></div>
+      <h3><span class="zh">P2P 多节点</span><span class="en">P2P multi-node</span></h3>
+      <p><span class="zh">节点 P2P 组网，主节点故障时自动选举接班；IPv6 冗余节点做数据备份；节点间通讯 AES-256-GCM 加密。</span><span class="en">Nodes form a P2P cluster with automatic failover; IPv6 backup nodes keep redundant copies; inter-node traffic is AES-256-GCM encrypted.</span></p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></div>
+      <h3><span class="zh">开源 · 零依赖</span><span class="en">Open source · zero deps</span></h3>
+      <p><span class="zh">节点用纯 Java 编写（JDK 自带 HTTP / AES / ML-DSA），单个 jar 即可运行，256MB 的 VPS 也能部署。</span><span class="en">Pure Java (JDK HTTP / AES / ML-DSA), a single jar, deployable on a 256 MB VPS.</span></p></div>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <h2><span class="zh">去中心化如何实现</span><span class="en">How decentralization works</span></h2>
+  <p class="sub"><span class="zh">节点只负责排序和执行规则，不掌握任何人的名字。名字属于持有私钥的人，资格来自链上质押，规则来自链上协议。</span><span class="en">Nodes only order operations and apply rules — they own no one's name. A name belongs to whoever holds the key; eligibility comes from the on-chain pledge; rules come from the on-chain protocol.</span></p>
+  <div class="flow">
+    <div class="f"><em>01 · CHAIN</em><b><span class="zh">链上授权质押</span><span class="en">On-chain pledge</span></b><span><span class="zh">资产钱包把 ≥1 QCC 授权质押给签名钱包，tag = <code>qccio</code>，交易 hash 即凭证。</span><span class="en">Asset wallet pledges ≥1 QCC to a signing wallet under tag <code>qccio</code>; the tx hash is the credential.</span></span></div>
+    <div class="f"><em>02 · SIGN</em><b><span class="zh">用户签名</span><span class="en">User signs</span></b><span><span class="zh">签名钱包对 <code>QNS1|register|…|credentialHash</code> 做 ML-DSA-87 签名。</span><span class="en">The signing wallet signs <code>QNS1|register|…|credentialHash</code> with ML-DSA-87.</span></span></div>
+    <div class="f"><em>03 · NODE</em><b><span class="zh">节点按协议执行</span><span class="en">Nodes apply rules</span></b><span><span class="zh">验签 → 查链上质押 → 按协议顺序检查 → 写入帧日志，复制到过半核心节点。</span><span class="en">Verify signature → check pledge on-chain → run checks in protocol order → append to the frame log, replicated to a majority.</span></span></div>
+    <div class="f"><em>04 · VERIFY</em><b><span class="zh">任何人核验</span><span class="en">Anyone verifies</span></b><span><span class="zh">verify 返回签名原文与签名，再到链上确认质押仍然有效。撤销后立即显示 <code>REVOKED</code>。</span><span class="en">verify returns the signed string and signature, and re-checks the pledge on-chain. A revoked pledge shows <code>REVOKED</code> immediately.</span></span></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><h3><span class="zh">两个钱包，职责分离</span><span class="en">Two wallets, separated duties</span></h3>
+      <p><span class="zh"><b>资产钱包</b>持有 QCC、发起质押，只有它能撤销。<b>签名钱包</b>是 0 资产地址，只用于签名和持有名字。签名钱包的私钥放在应用里，即使泄露也动不了资产；在资产钱包撤销质押，名字随即失效。</span><span class="en">The <b>asset wallet</b> holds QCC, makes the pledge, and is the only one who can revoke it. The <b>signing wallet</b> is a zero-balance address used only to sign and hold the name. Its key can live in your app: a leak cannot move funds, and revoking from the asset wallet kills the name.</span></p></div>
+    <div class="card"><h3><span class="zh">节点作恶怎么办</span><span class="en">What if a node misbehaves</span></h3>
+      <p><span class="zh">节点无法伪造用户签名，所以没法凭空造出一个名字。每一帧都进入 execHash 链，各节点的 execHash 必须一致，分叉立即暴露。协议 hash 锚定在链上，节点改不了规则。</span><span class="en">A node cannot forge user signatures, so it cannot invent a name. Every frame enters the execHash chain; all nodes must agree on it, so forks are exposed immediately. The protocol hash is anchored on-chain, so nodes cannot change the rules.</span></p></div>
+  </div>
+</div></section>
+
+<section id="guide"><div class="wrap">
+  <h2><span class="zh">接入指南：从质押到注册</span><span class="en">Guide: from pledge to registration</span></h2>
+  <p class="sub"><span class="zh">以下以 QCC 测试网（chain <code>6666</code>）为例。链上操作参考 <a href="https://test.qccio.com" target="_blank" rel="noopener">QCC 开发者网站</a>，名称操作调用本页所在节点的 <code>/v1/*</code> 接口（已开放跨域，网页应用可以直接调用）。</span><span class="en">Examples use the QCC testnet (chain <code>6666</code>). For on-chain operations see the <a href="https://test.qccio.com" target="_blank" rel="noopener">QCC developer site</a>; name operations call this node's <code>/v1/*</code> API (CORS enabled for web apps).</span></p>
+
+  <div class="steps">
+    <div class="step"><div class="num"></div><div>
+      <h3><span class="zh">准备两个钱包</span><span class="en">Prepare two wallets</span></h3>
+      <p><span class="zh">资产钱包里要有 QCC，签名钱包新建一个就行，余额为 0。两个都是 ML-DSA-87 地址。</span><span class="en">An asset wallet holding QCC, and a freshly created signing wallet with zero balance. Both are ML-DSA-87 addresses.</span></p>
+      <pre><span class="c"># 资产钱包 / asset wallet</span>
+QAssetWallet…        <span class="c"># 持有 ≥ 1 QCC，负责质押与撤销</span>
+<span class="c"># 签名钱包 / signing wallet（0 资产）</span>
+QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1   <span class="c"># 持有名字、签名注册 / 删除</span></pre>
+    </div></div>
+
+    <div class="step"><div class="num"></div><div>
+      <h3><span class="zh">授权质押（tag 质押）</span><span class="en">Authorized pledge (tag pledge)</span></h3>
+      <p><span class="zh">资产钱包发起一笔质押规则交易：把 ≥1 QCC 授权质押给签名钱包，绑定 tag <code>qccio</code>。交易上链后，交易 hash 就是之后注册用的 <code>credentialHash</code>。</span><span class="en">The asset wallet submits a pledge rule transaction: authorize ≥1 QCC to the signing wallet under tag <code>qccio</code>. Once on-chain, the tx hash becomes the <code>credentialHash</code> used for registration.</span></p>
+      <pre><span class="c">// 规则交易要素（提交到 QCC 节点 /v1/rule，由资产钱包签名）</span>
+type      = AuthorizedPledge · lock
+from      = QAssetWallet…                         <span class="c">// 质押方：唯一可撤销者</span>
+to        = QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1   <span class="c">// 被授权的签名钱包</span>
+tag       = <span class="s">"qccio"</span>
+amount    = <span class="v">1000000000</span>                            <span class="c">// 1 QCC（NanoQCC）</span>
+
+<span class="c"># 确认上链，拿到 credentialHash</span>
+GET /v1/hash/{txHash}                     → status = SUCCESS
+<span class="c"># 确认授权质押已生效</span>
+GET /v1/pledge/{to}?tag=qccio&amp;hash={txHash}&amp;minAmount=0</pre>
+      <div class="note"><span class="zh">完整的 Java 质押、撤销示例见开源仓库中的 qcctest（<code>QccNameTestKit.pledge() / revoke()</code>）。质押可以随时撤销：资金回到资产钱包，名字随之失效。</span><span class="en">Full Java pledge / revoke examples are in qcctest in the open-source repo (<code>QccNameTestKit.pledge() / revoke()</code>). A pledge can be revoked anytime: funds return to the asset wallet and the name lapses.</span></div>
+    </div></div>
+
+    <div class="step"><div class="num"></div><div>
+      <h3><span class="zh">选择命名空间 tag 与名字</span><span class="en">Choose a namespace tag and a label</span></h3>
+      <p><span class="zh">名字 = <code>label.tag</code>。目前开放的命名空间：</span><span class="en">A name is <code>label.tag</code>. Open namespaces:</span></p>
+      <p><span class="pill">.qcc</span> <span class="pill">.osn</span> <span class="pill">.com</span></p>
+      <ul>
+        <li><span class="zh">label：2–32 位，只能用 <code>a-z 0-9 -</code>，不能以 <code>-</code> 开头或结尾</span><span class="en">label: 2–32 chars of <code>a-z 0-9 -</code>, no leading/trailing <code>-</code></span></li>
+        <li><span class="zh">每个地址在每个 tag 下只能持有一个名字</span><span class="en">One name per address per tag</span></li>
+        <li><span class="zh">新的命名空间 tag 通过协议版本升级开放（协议上链，hash 可查）</span><span class="en">New namespace tags open through a protocol version upgrade (on-chain, by hash)</span></li>
+      </ul>
+      <div class="note"><span class="zh"><b>应用自己的 tag：</b>你的应用可以在 QCC 上发布规则交易，定义自己的质押 tag（例如 <code>myapp</code>），要求用户质押 n 个 QCC 才能使用。应用服务器用 <code>/v1/pledge</code> 校验用户的质押，用 Namespace 把用户地址显示成名字 —— 这样就有了一套不依赖中心化数据库的账户体系。</span><span class="en"><b>Your app's own tag:</b> publish a rule transaction on QCC that defines your own pledge tag (e.g. <code>myapp</code>) requiring users to pledge n QCC. Your server checks the pledge via <code>/v1/pledge</code> and uses Namespace to show addresses as names — an account system with no central database.</span></div>
+    </div></div>
+
+    <div class="step"><div class="num"></div><div>
+      <h3><span class="zh">签名并注册</span><span class="en">Sign and register</span></h3>
+      <p><span class="zh">签名前可以先预检（不需要签名、不写入），带上 address 和 credentialHash 时会一并检查"地址已有名字"和授权质押：</span><span class="en">Before signing you can pre-check (no signature, nothing written); with address and credentialHash it also checks address-has-name and the pledge:</span></p>
+      <pre>GET /v1/check?name=alice.qcc&amp;address={address}&amp;credentialHash={txHash}
+{ <span class="k">"name"</span>: <span class="s">"alice.qcc"</span>, <span class="k">"available"</span>: <span class="v">false</span>, <span class="k">"resultCode"</span>: <span class="v">13</span>, <span class="k">"reason"</span>: <span class="s">"已被注册"</span>, <span class="k">"holder"</span>: <span class="s">"Q…"</span> }</pre>
+      <p><span class="zh">客户端只需要三步：拼接签名字符串 → 用签名钱包做 ML-DSA-87 签名（纯模式、空 context、签 UTF-8 原文）→ 提交 JSON。服务端按请求字段重建字符串再验签。</span><span class="en">Three steps on the client: build the sign string → sign with the signing wallet using ML-DSA-87 (pure mode, empty context, over the UTF-8 bytes) → POST the JSON. The server rebuilds the string from the fields and verifies.</span></p>
+      <pre><span class="c"># 签名字符串 / sign string</span>
+QNS1|register|<span class="v">6666</span>|QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1|<span class="s">alice.qcc</span>|<span class="v">1793520000000</span>|<span class="s">{credentialHash}</span>
+
+<span class="c"># 提交</span>
+POST /v1/register
+{
+  <span class="k">"chain"</span>: <span class="s">"6666"</span>,
+  <span class="k">"address"</span>: <span class="s">"QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1"</span>,
+  <span class="k">"name"</span>: <span class="s">"alice.qcc"</span>,
+  <span class="k">"timestamp"</span>: <span class="v">1793520000000</span>,          <span class="c">// 毫秒；与节点时间相差需在 ±5 分钟内，且大于该地址上一次操作</span>
+  <span class="k">"credentialHash"</span>: <span class="s">"{质押交易 hash}"</span>,
+  <span class="k">"sig"</span>: <span class="s">"{ML-DSA-87 签名 hex}"</span>,
+  <span class="k">"pubkey"</span>: <span class="s">"{签名钱包公钥 hex}"</span>       <span class="c">// 0 资产钱包链上无公钥时必填；链上已有可省略</span>
+}
+
+<span class="c"># 返回</span>
+{ <span class="k">"status"</span>: <span class="s">"OK"</span>, <span class="k">"resultCode"</span>: <span class="v">0</span>, <span class="k">"seq"</span>: <span class="v">128</span>, <span class="k">"message"</span>: <span class="s">""</span> }</pre>
+      <div class="note"><span class="zh"><b>0 资产钱包：</b>签名钱包从未在链上发过交易，链上没有它的公钥。注册时请带上 <code>pubkey</code>：节点校验该公钥推导出的地址（SHA3-256 → 0x3A → Base58）与 <code>address</code> 一致后才接受，并随帧同步给所有节点保存；之后的操作就不用再带了。</span><span class="en"><b>Zero-balance wallets:</b> a signing wallet that never sent a transaction has no public key on-chain. Include <code>pubkey</code> when registering: nodes check that it derives to <code>address</code> (SHA3-256 → 0x3A → Base58) before accepting, and replicate it with the frame; later operations don't need it.</span></div>
+      <div class="note"><span class="zh"><code>status</code>：<b>OK</b> 已确认 · <b>REJECTED</b> 被规则拒绝（看 resultCode）· <b>PENDING</b> 已写入、备份确认不足 · <b>DROPPED</b> 入口直接丢弃（签名、时间窗等）· <b>UNAVAILABLE</b> 链或主节点暂不可用，可以重试。同一请求重复提交是幂等的。</span><span class="en"><code>status</code>: <b>OK</b> confirmed · <b>REJECTED</b> by a rule (see resultCode) · <b>PENDING</b> logged, backup confirmation short · <b>DROPPED</b> at the entrance (signature, time window…) · <b>UNAVAILABLE</b> chain/primary temporarily down, retry. Resubmitting the same request is idempotent.</span></div>
+    </div></div>
+
+    <div class="step"><div class="num"></div><div>
+      <h3><span class="zh">查询与核验</span><span class="en">Look up and verify</span></h3>
+      <pre>GET /v1/verify?name=alice.qcc&amp;address=QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1
+
+{ <span class="k">"match"</span>: <span class="v">true</span>, <span class="k">"status"</span>: <span class="s">"MATCH"</span>, <span class="k">"name"</span>: <span class="s">"alice.qcc"</span>,
+  <span class="k">"address"</span>: <span class="s">"QWasm…hM1"</span>, <span class="k">"regSeq"</span>: <span class="v">128</span>, <span class="k">"credentialHash"</span>: <span class="s">"…"</span>,
+  <span class="k">"evidence"</span>: { <span class="k">"signString"</span>: <span class="s">"QNS1|register|…"</span>, <span class="k">"sig"</span>: <span class="s">"…"</span>, <span class="k">"opBytes"</span>: <span class="s">"…"</span> } }</pre>
+      <p><span class="zh">应用只需要看 <code>match</code>：true 表示名字属于该地址且质押有效，其余情况一律 false。<code>status</code> 给出原因：<span class="pill ok">MATCH</span> <span class="pill bad">MISMATCH</span> <span class="pill">NOT_FOUND</span> <span class="pill warn">REVOKED</span> <span class="pill">UNVERIFIED</span>。要做到不信任节点，就用 <code>/v1/pubkey</code>（或直接从链上）取公钥，对 <code>evidence.signString</code> 验签。</span><span class="en">Apps only need <code>match</code>: true means the name belongs to the address and its pledge is live; anything else is false. <code>status</code> gives the reason: <span class="pill ok">MATCH</span> <span class="pill bad">MISMATCH</span> <span class="pill">NOT_FOUND</span> <span class="pill warn">REVOKED</span> <span class="pill">UNVERIFIED</span>. For trust-free verification, fetch the public key via <code>/v1/pubkey</code> (or from the chain) and verify <code>evidence.signString</code>.</span></p>
+      <pre>GET /v1/address?address=QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1
+
+{ <span class="k">"address"</span>: <span class="s">"QWasm…hM1"</span>, <span class="k">"names"</span>: [ { <span class="k">"name"</span>: <span class="s">"alice.qcc"</span>, <span class="k">"match"</span>: <span class="v">true</span>, <span class="k">"status"</span>: <span class="s">"MATCH"</span>,
+  <span class="k">"creds"</span>: { <span class="k">"qccio"</span>: <span class="s">"6b7e…"</span> } } ] }</pre>
+      <p><span class="zh">按地址反查名下的名字。<code>creds</code> 是链上凭证 <code>{质押 tag: 交易 hash}</code>：拿 <code>address + tag + hash</code> 可以直接向 QCC 公链三要素核对质押，不必相信 namespace 节点。</span><span class="en">Reverse lookup by address. <code>creds</code> is the on-chain credential <code>{pledge tag: tx hash}</code>: with <code>address + tag + hash</code> you can check the pledge directly on the QCC chain, without trusting namespace nodes.</span></p>
+      <div class="note"><span class="zh">应用登录接入：<b>QCC-Auth</b> 组件（独立 jar，一份 JSON 配置）把"验签 → 多节点名称核对 → 链上质押门槛 → 会话复查"封装好，应用不存密码即可用名字作为账户。</span><span class="en">For app sign-in, the <b>QCC-Auth</b> component (a standalone jar with one JSON config) wraps "verify signature → multi-node name check → on-chain pledge threshold → session re-check", so an app can use names as accounts without storing passwords.</span></div>
+    </div></div>
+
+    <div class="step"><div class="num"></div><div>
+      <h3><span class="zh">删除与撤销</span><span class="en">Unregister and revoke</span></h3>
+      <pre><span class="c"># 主动删除（签名钱包签名；regSeq 取自 verify）</span>
+QNS1|unregister|<span class="v">6666</span>|{address}|<span class="s">alice.qcc</span>|{timestamp}|<span class="v">{regSeq}</span>
+POST /v1/unregister  { chain, address, name, timestamp, regSeq, sig }</pre>
+      <ul>
+        <li><span class="zh">删除后名字进入 <b>30 天冷却期</b>，期间任何人（包括原地址）都不能注册</span><span class="en">After deletion the name enters a <b>30-day cooldown</b> — nobody, including the former holder, can register it</span></li>
+        <li><span class="zh">在资产钱包撤销质押 → verify 立即返回 <code>REVOKED</code>（match = false）；有人申请该名字时，节点经 ≥2 个链节点确认质押已不存在，再自动回收，同样进入冷却期</span><span class="en">Revoke the pledge from the asset wallet → verify immediately returns <code>REVOKED</code> (match = false); when someone requests the name, nodes confirm with ≥2 chain nodes that the pledge is gone, reclaim it, and start the cooldown</span></li>
+      </ul>
+    </div></div>
+  </div>
+</div></section>
+
+<section id="rules"><div class="wrap">
+  <h2><span class="zh">规则与结果码</span><span class="en">Rules and result codes</span></h2>
+  <p class="sub"><span class="zh">全部规则来自引导协议 <code>qcc-name v1.0.0</code>，它遵循链上元协议 <code>qcc-meta/1</code>。各项检查严格按协议规定的顺序执行。</span><span class="en">All rules come from the bootstrap protocol <code>qcc-name v1.0.0</code>, which follows the on-chain meta-protocol <code>qcc-meta/1</code>. Checks run strictly in protocol order.</span></p>
+  <div class="grid g2">
+    <div class="tbl"><table>
+      <tr><th><span class="zh">规则</span><span class="en">Rule</span></th><th><span class="zh">内容</span><span class="en">Value</span></th></tr>
+      <tr><td><span class="zh">质押</span><span class="en">Pledge</span></td><td><span class="zh">tag <code>qccio</code>，≥ 1 QCC 授权质押</span><span class="en">tag <code>qccio</code>, ≥ 1 QCC authorized pledge</span></td></tr>
+      <tr><td><span class="zh">格式</span><span class="en">Format</span></td><td><code>[a-z0-9-]{2,32}</code><span class="zh">，首尾不能是 -</span><span class="en">, no leading/trailing -</span></td></tr>
+      <tr><td><span class="zh">保留名</span><span class="en">Reserved</span></td><td><span class="zh">协议不内置，人人可注册、先到先得；企业级 namespace 由发布者在 <a href="#reserved">Reserved</a> 中指定</span><span class="en">None built in — anyone may register, first come first served; an enterprise namespace defines them in <a href="#reserved">Reserved</a></span></td></tr>
+      <tr><td><span class="zh">形近字</span><span class="en">Confusables</span></td><td><code>0→o</code> <code>1→l</code> <code>rn→m</code><span class="zh">（同一 tag 下归一化后相同即冲突）</span><span class="en"> (same normalized form within a tag conflicts)</span></td></tr>
+      <tr><td><span class="zh">冷却期</span><span class="en">Cooldown</span></td><td><span class="zh">30 天，对所有人生效</span><span class="en">30 days, applies to everyone</span></td></tr>
+      <tr><td><span class="zh">时间戳</span><span class="en">Timestamp</span></td><td><span class="zh">与节点相差 ±5 分钟内，同一地址必须严格递增</span><span class="en">within ±5 min of node time; strictly increasing per address</span></td></tr>
+    </table></div>
+    <div class="tbl"><table>
+      <tr><th>code</th><th><span class="zh">含义</span><span class="en">Meaning</span></th></tr>
+      <tr><td>0</td><td>ok</td></tr>
+      <tr><td>10</td><td><span class="zh">格式不符</span><span class="en">labelFormat</span></td></tr>
+      <tr><td>11</td><td><span class="zh">保留名（Reserved 表中的名字，或与之形近）</span><span class="en">reserved (in the Reserved table, or confusable with one)</span></td></tr>
+      <tr><td>12</td><td><span class="zh">形近冲突</span><span class="en">confusable</span></td></tr>
+      <tr><td>13</td><td><span class="zh">已被持有</span><span class="en">nameTaken</span></td></tr>
+      <tr><td>14</td><td><span class="zh">冷却期中</span><span class="en">cooldown</span></td></tr>
+      <tr><td>15</td><td><span class="zh">tag 未开放</span><span class="en">tagNotOpen</span></td></tr>
+      <tr><td>20</td><td><span class="zh">地址在该 tag 下已有名字</span><span class="en">addressHasName</span></td></tr>
+      <tr><td>21</td><td><span class="zh">时间戳未递增</span><span class="en">tsNotMonotonic</span></td></tr>
+      <tr><td>30</td><td><span class="zh">质押不满足</span><span class="en">pledgeNotMet</span></td></tr>
+      <tr><td>40–44</td><td><span class="zh">删除 / 回收：名称不存在 · 持有人不符 · regSeq 不符 · 凭证不符 · 质押仍有效</span><span class="en">unregister / expire: nameNotFound · holderMismatch · regSeqMismatch · credentialMismatch · pledgeStillValid</span></td></tr>
+      <tr><td>50–55</td><td><span class="zh">Reserved 不生效：非发布者 · chain 不符 · 文档不合规 · seq / prevTx 不连续 · 高度未递增 · 去掉名字未写 release</span><span class="en">Reserved rejected: not the publisher · chain mismatch · invalid document · seq / prevTx break · height not increasing · name dropped without release</span></td></tr>
+    </table></div>
+  </div>
+</div></section>
+
+<section id="live"><div class="wrap">
+  <h2><span class="zh">在线查询</span><span class="en">Try it live</span></h2>
+  <p class="sub"><span class="zh">直接调用本页所在节点的接口。</span><span class="en">Calls the API of the node serving this page.</span></p>
+  <div class="live">
+    <div class="card">
+      <h3><span class="zh">核验名称</span><span class="en">Verify a name</span></h3>
+      <div class="field"><input id="qName" placeholder="alice.qcc" autocomplete="off"></div>
+      <div class="field"><input id="qAddr" placeholder="address（可选 / optional）" autocomplete="off"><button class="btn primary" id="qGo"><span class="zh">查询</span><span class="en">Verify</span></button></div>
+      <div id="qBadge" class="big" style="margin:10px 0 6px"></div>
+      <div class="out" id="qOut">—</div>
+    </div>
+    <div class="card">
+      <h3><span class="zh">节点状态</span><span class="en">Node status</span> <button class="btn" id="sGo" style="float:right">↻</button></h3>
+      <dl class="kv" id="sKv"><dt>—</dt><dd></dd></dl>
+    </div>
+  </div>
+</div></section>
+
+<section id="nodes"><div class="wrap">
+  <h2><span class="zh">节点网络</span><span class="en">Node network</span></h2>
+  <p class="sub"><span class="zh">一台服务器运行一个节点（单个 jar）。配置只有三项：nodeId、集群密钥和 seeds；节点之间 P2P 自动发现。</span><span class="en">One node per server (a single jar). Configuration is three items — nodeId, cluster key, seeds — and nodes discover each other P2P.</span></p>
+  <div class="grid g3">
+    <div class="card"><h3>genesis</h3><p><span class="zh">创世节点，集群里的第一台。</span><span class="en">The first node of the cluster.</span></p></div>
+    <div class="card"><h3>production</h3><p><span class="zh">核心节点（公网 IPv4）：确认写入、投票，主节点故障时过半同意即自动接班。</span><span class="en">Core nodes (public IPv4): confirm writes, vote, and take over by majority when the primary fails.</span></p></div>
+    <div class="card"><h3>backup</h3><p><span class="zh">冗余节点（IPv6 / 家庭网络）：实时同步全部数据，提供查询。</span><span class="en">Backup nodes (IPv6 / home): full real-time copies, serving lookups.</span></p></div>
+  </div>
+  <pre style="margin-top:16px"><span class="c"># qccname.properties</span>
+nodeId=Q…                 <span class="c"># 本机 QCC 地址</span>
+clusterKey=64位hex        <span class="c"># 节点间 AES-256-GCM 密钥</span>
+type=production           <span class="c"># genesis / production / backup</span>
+seeds=203.0.113.10:9180   <span class="c"># 任意一台已运行的节点</span>
+protocolTx=…              <span class="c"># 可选：协议上链交易 hash → 启用 Reserved（交易 from = 发布者）</span>
+
+./qccname.sh start | status | log | stop</pre>
+  <div class="note"><span class="zh">元协议 <code>qcc-meta/1</code> 已发布在 QCC 测试链：交易 <code>09ea70e03fc68f5e…02bf2e8</code>，高度 16965。<code>qcc-name v1.0.0</code> 协议上链后，在这里公布交易 hash 与协议 hash。</span><span class="en">Meta-protocol <code>qcc-meta/1</code> is on the QCC testnet: tx <code>09ea70e03fc68f5e…02bf2e8</code>, height 16965. The <code>qcc-name v1.0.0</code> tx and protocol hash will be published here once anchored.</span></div>
+</div></section>
+<section id="contact"><div class="wrap">
+  <h2><span class="zh">联系我们</span><span class="en">Contact</span></h2>
+  <p class="sub"><span class="zh">企业级 namespace 部署、Reserved 设计、行业 fork、节点合作，欢迎来信。两个邮箱都由 QCC 团队处理。</span><span class="en">Enterprise namespace deployment, Reserved design, industry forks, running nodes — write to us. Both addresses reach the QCC team.</span></p>
+  <div class="contact">
+    <div class="card"><h3><span class="zh">我们可以帮你</span><span class="en">What we can help with</span></h3>
+      <ul style="margin:6px 0 0;padding-left:18px;color:var(--ink2);font-size:14.5px">
+        <li><span class="zh">现有账户体系的抗量子迁移方案</span><span class="en">Post-quantum migration of an existing account system</span></li>
+        <li><span class="zh">企业 tag、Reserved 管理名与多签发布地址</span><span class="en">Enterprise tags, Reserved management names, multi-sig publishers</span></li>
+        <li><span class="zh">qccauth 接入、私有 namespace 节点部署</span><span class="en">qccauth integration, private namespace nodes</span></li>
+      </ul></div>
+    <a class="mailcard" href="mailto:dev@qccio.com"><div><small>QCC · qccio.com</small><div class="addr">dev@qccio.com</div></div><span class="go"><span class="zh">写邮件 →</span><span class="en">Send email →</span></span></a>
+    <a class="mailcard" href="mailto:dev@osnsg.com"><div><small>OSN · osnsg.com</small><div class="addr">dev@osnsg.com</div></div><span class="go"><span class="zh">写邮件 →</span><span class="en">Send email →</span></span></a>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <div>QCC-Namespace v1.0 · <span class="zh">抗量子去中心化账户名</span><span class="en">post-quantum decentralized names</span> · <a href="mailto:dev@qccio.com">dev@qccio.com</a> · <a href="mailto:dev@osnsg.com">dev@osnsg.com</a></div>
+  <div><a href="https://test.qccio.com" target="_blank" rel="noopener"><span class="zh">QCC 开发者网站</span><span class="en">QCC developer site</span></a> · <a href="#paper"><span class="zh">白皮书（即将发布）</span><span class="en">Whitepaper (coming soon)</span></a> · <a href="#" id="repoLink"><span class="zh">开源仓库（即将发布）</span><span class="en">Source (coming soon)</span></a> · <a href="ops.html"><span class="zh">运维手册</span><span class="en">Operations manual (zh)</span></a></div>
+  <a class="powered" href="https://test.qccio.com" target="_blank" rel="noopener"><span class="mark"><svg viewBox="0 0 407 407" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M182.8 405.9C140.5 401.8 98.2 382.9 66.5 353.9C29.6 320.1 7.8 277.9 1.0 226.7C-1.6 207.1 0.4 176.4 5.6 155.0C14.5 118.9 34.1 84.5 61.0 58.1C91.1 28.5 128.3 9.9 172.5 2.4C185.1 0.2 217.4 -0.1 231.0 1.9C275.4 8.2 315.5 28.3 347.0 59.9C370.1 83.1 385.3 107.4 395.5 137.2C413.6 190.6 409.7 246.2 384.3 296.2C378.7 307.3 367.4 325.0 365.9 325.0C365.5 325.0 361.8 322.0 357.8 318.2C320.7 284.2 318.0 281.6 318.0 279.6C318.0 278.5 320.9 271.7 324.5 264.5C334.5 244.4 339.0 225.5 339.0 203.6C339.0 159.3 318.8 119.8 282.4 92.9C268.4 82.6 244.7 72.8 226.1 69.6C214.0 67.5 192.3 67.5 180.5 69.6C155.6 73.8 133.2 84.5 114.5 100.8C103.9 110.1 98.4 116.2 90.1 128.4C83.7 137.8 82.9 140.7 85.8 143.2C88.8 146.0 131.9 167.0 134.4 167.0C135.9 167.0 137.7 165.9 139.2 164.0C151.1 148.4 157.5 142.7 169.6 136.7C192.2 125.4 218.2 126.1 240.9 138.6C249.2 143.2 263.1 157.1 268.3 166.0C270.4 169.6 273.3 176.1 274.7 180.5C277.1 187.7 277.4 189.9 277.4 203.5C277.4 217.4 277.2 219.1 274.7 226.4C270.3 238.9 265.4 246.6 256.0 256.0C246.5 265.5 238.3 270.7 227.0 274.5C195.9 284.8 162.1 274.0 142.4 247.3C138.2 241.6 136.4 240.0 134.5 240.0C131.8 240.0 86.0 262.5 84.8 264.4C83.1 266.9 84.3 270.0 90.7 279.5C107.2 303.9 133.0 323.5 160.6 332.4C174.6 337.0 181.9 338.2 198.6 338.7C220.7 339.4 239.4 336.1 256.8 328.4C264.8 324.9 266.6 325.2 273.0 331.3C276.0 334.2 287.1 344.4 297.5 353.9C307.9 363.4 316.6 371.5 316.8 371.9C317.1 372.9 300.9 382.2 289.0 387.8C256.7 403.0 219.2 409.4 182.8 405.9Z"/></svg></span><span>Powered by <b>QCC</b></span></a>
+</div></footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+  var lang=get('qn-lang')||((navigator.language||'').toLowerCase().indexOf('zh')===0?'zh':'en');
+  function applyLang(){root.lang=lang;document.getElementById('langBtn').textContent=lang==='zh'?'EN':'中文';
+    document.title=lang==='zh'?'QCC-Namespace · 去中心化账户名':'QCC-Namespace · Decentralized Names'}
+  applyLang();
+  document.getElementById('langBtn').onclick=function(){lang=lang==='zh'?'en':'zh';set('qn-lang',lang);applyLang()};
+  var th=get('qn-theme'); if(th) root.dataset.theme=th;
+  document.getElementById('themeBtn').onclick=function(){
+    var dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark'; set('qn-theme',root.dataset.theme)};
+
+  var API=location.protocol.indexOf('http')===0?'':'http://127.0.0.1:9180';
+  function esc(s){return String(s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+
+  function verify(){
+    var n=document.getElementById('qName').value.trim().toLowerCase(), a=document.getElementById('qAddr').value.trim();
+    var out=document.getElementById('qOut'), badge=document.getElementById('qBadge');
+    if(!n){out.textContent=lang==='zh'?'请输入名称，例如 alice.qcc':'Enter a name, e.g. alice.qcc';return}
+    out.textContent='…'; badge.textContent='';
+    fetch(API+'/v1/verify?name='+encodeURIComponent(n)+'&address='+encodeURIComponent(a))
+      .then(function(r){return r.json()})
+      .then(function(j){
+        var color=j.match?'var(--ok)':j.status==='REVOKED'?'var(--warn)':'var(--bad)';
+        badge.innerHTML='<span style="color:'+color+'">'+(j.match?'✓ ':'✗ ')+esc(j.status||'')+'</span>';
+        if(j.evidence&&j.evidence.sig) j.evidence.sig=j.evidence.sig.slice(0,48)+'… ('+j.evidence.sig.length/2+' bytes)';
+        if(j.evidence&&j.evidence.opBytes) j.evidence.opBytes=j.evidence.opBytes.slice(0,32)+'…';
+        out.textContent=JSON.stringify(j,null,2)})
+      .catch(function(e){out.textContent=(lang==='zh'?'请求失败：':'Request failed: ')+e})
+  }
+  document.getElementById('qGo').onclick=verify;
+  ['qName','qAddr'].forEach(function(id){document.getElementById(id).addEventListener('keydown',function(e){if(e.key==='Enter')verify()})});
+
+  function status(){
+    var kv=document.getElementById('sKv');
+    fetch(API+'/v1/status').then(function(r){return r.json()}).then(function(j){
+      var c=j.cluster||{}, rows=[
+        ['role',j.role],['term',j.term],['seq',j.seq],['execHash',(j.execHash||'').slice(0,24)+'…'],
+        ['primary',(j.primaryId||'').slice(0,14)+'…'],['cores',(c.cores||[]).length],['backups',(c.observers||[]).length],['signer',j.signer]];
+      kv.innerHTML=rows.map(function(r){return '<dt>'+r[0]+'</dt><dd>'+esc(r[1]==null?'':r[1])+'</dd>'}).join('')
+    }).catch(function(){kv.innerHTML='<dt>—</dt><dd>'+(lang==='zh'?'节点接口不可达（本地预览时属正常）':'node API unreachable (normal in local preview)')+'</dd>'})
+  }
+  document.getElementById('sGo').onclick=status; status();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>运维手册 · QCC-Namespace</title>
+<meta name="description" content="QCC-Namespace Linux 运维手册：单实例、单机多实例、企业 Namespace 协议与 Reserved 发布、故障处理。">
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --panel2:#f1f3f7; --ink:#14171f; --ink2:#4a5263; --ink3:#7a8294;
+  --line:#e2e6ee; --accent:#3b5bfd; --accent2:#0fb5a6; --warn:#d9822b; --bad:#d64545; --ok:#1f9d55;
+  --code:#0f1420; --codeink:#d6deeb; --radius:14px; --shadow:0 1px 2px rgba(20,23,31,.04),0 6px 24px rgba(20,23,31,.06);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0e14; --panel:#121722; --panel2:#18202e; --ink:#e8ecf4; --ink2:#a9b2c3; --ink3:#77819a;
+  --line:#232c3c; --accent:#7b93ff; --accent2:#2fd3c3; --code:#070a10; --codeink:#d6deeb; --shadow:none;}}
+:root[data-theme="dark"]{
+  --bg:#0b0e14; --panel:#121722; --panel2:#18202e; --ink:#e8ecf4; --ink2:#a9b2c3; --ink3:#77819a;
+  --line:#232c3c; --accent:#7b93ff; --accent2:#2fd3c3; --code:#070a10; --codeink:#d6deeb; --shadow:none;}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+html[lang="zh"] .en, html[lang="en"] .zh{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:18px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;color:var(--ink)}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font:700 13px var(--mono)}
+nav.links{display:flex;gap:18px;margin-left:auto;font-size:14px}
+nav.links a{color:var(--ink2)} nav.links a:hover{color:var(--ink);text-decoration:none}
+.tools{display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:6px 11px;font:600 13px var(--sans);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (max-width:820px){nav.links{display:none}}
+
+.hero{padding:76px 0 40px}
+.eyebrow{font:600 12px var(--mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:clamp(32px,5vw,52px);line-height:1.15;margin:14px 0 16px;letter-spacing:-.5px}
+.hero h1 .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{font-size:18px;color:var(--ink2);max-width:720px;margin:0 0 26px}
+.cta{display:flex;gap:10px;flex-wrap:wrap}
+.cta a{padding:10px 16px;border-radius:10px;font-weight:600;font-size:15px}
+.cta a.a1{background:var(--accent);color:#fff} .cta a.a2{border:1px solid var(--line);color:var(--ink);background:var(--panel)}
+.cta a:hover{text-decoration:none;filter:brightness(1.05)}
+.namecard{margin-top:38px;display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.namecard .n{font:700 28px var(--mono);color:var(--ink)} .namecard .n i{font-style:normal;color:var(--accent2)}
+.namecard .arrow{font:600 22px var(--mono);color:var(--ink3)}
+.namecard .addr{font:13px/1.5 var(--mono);color:var(--ink2);word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chips span{font:600 13px var(--mono);padding:5px 11px;border-radius:99px;background:var(--panel);border:1px solid var(--line);color:var(--ink2)}
+.namecard small{display:block;color:var(--ink3);font:12px var(--sans);margin-top:4px}
+@media (max-width:700px){.namecard{grid-template-columns:1fr;text-align:left}.namecard .arrow{transform:rotate(90deg);justify-self:start}}
+
+section{padding:56px 0;border-top:1px solid var(--line)}
+section h2{font-size:28px;margin:0 0 8px;letter-spacing:-.3px}
+section .sub{color:var(--ink2);margin:0 0 28px;max-width:760px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+@media (max-width:860px){.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0;color:var(--ink2);font-size:15px;overflow-wrap:anywhere}
+.ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--panel2);color:var(--accent);margin-bottom:12px}
+.ico svg{width:18px;height:18px}
+
+.steps{counter-reset:s;display:grid;gap:18px}
+.step>div,.grid>*,.live>*,.namecard>*{min-width:0}
+.step{display:grid;grid-template-columns:44px 1fr;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.step .num{counter-increment:s;width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center;font:700 18px var(--mono)}
+.step .num::before{content:counter(s)}
+.step h3{margin:2px 0 6px;font-size:19px}
+.step p{margin:0 0 10px;color:var(--ink2)}
+.step ul{margin:6px 0 10px;padding-left:20px;color:var(--ink2)} .step li{margin:3px 0}
+@media (max-width:600px){.step{grid-template-columns:1fr}}
+
+pre{background:var(--code);color:var(--codeink);border-radius:11px;padding:14px 16px;overflow:auto;font:13px/1.6 var(--mono);margin:10px 0 4px;border:1px solid var(--line)}
+code{font-family:var(--mono);font-size:.92em}
+p code, li code, td code{background:var(--panel2);padding:1px 6px;border-radius:6px;color:var(--ink)}
+.k{color:#82aaff}.s{color:#c3e88d}.c{color:#637777}.v{color:#f78c6c}
+.note{border-left:3px solid var(--accent2);background:var(--panel2);padding:10px 14px;border-radius:0 10px 10px 0;color:var(--ink2);font-size:14.5px;margin:10px 0}
+.note.warn{border-color:var(--warn)}
+
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink3);font-weight:600;font-size:13px}
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;box-shadow:var(--shadow)}
+.pill{display:inline-block;font:600 12px var(--mono);padding:2px 8px;border-radius:99px;background:var(--panel2);color:var(--ink2)}
+.pill.ok{color:var(--ok)} .pill.bad{color:var(--bad)} .pill.warn{color:var(--warn)}
+
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;align-items:stretch}
+.flow .f{background:var(--panel);border:1px solid var(--line);padding:16px;position:relative}
+.flow .f:first-child{border-radius:var(--radius) 0 0 var(--radius)} .flow .f:last-child{border-radius:0 var(--radius) var(--radius) 0}
+.flow .f+.f{border-left:none}
+.flow .f b{display:block;font-size:15px;margin-bottom:4px} .flow .f span{color:var(--ink2);font-size:13.5px}
+.flow .f em{font:600 11px var(--mono);color:var(--accent);font-style:normal;letter-spacing:1px}
+@media (max-width:860px){.flow{grid-template-columns:1fr}.flow .f{border-radius:0!important;border-left:1px solid var(--line)!important}.flow .f+.f{border-top:none}.flow .f:first-child{border-radius:var(--radius) var(--radius) 0 0!important}.flow .f:last-child{border-radius:0 0 var(--radius) var(--radius)!important}}
+
+.live{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+@media (max-width:860px){.live{grid-template-columns:1fr}}
+.field{display:flex;gap:8px;margin:8px 0}
+.field input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:9px;padding:9px 11px;font:14px var(--mono)}
+.field input:focus{outline:2px solid color-mix(in srgb,var(--accent) 40%,transparent);border-color:var(--accent)}
+.out{font:12.5px/1.55 var(--mono);white-space:pre-wrap;word-break:break-all;background:var(--panel2);border-radius:10px;padding:12px;min-height:64px;color:var(--ink2);max-height:340px;overflow:auto}
+.big{font:700 22px var(--mono)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px} .kv dt{color:var(--ink3)} .kv dd{margin:0;font-family:var(--mono);word-break:break-all}
+
+footer{border-top:1px solid var(--line);padding:30px 0 50px;color:var(--ink3);font-size:14px}
+footer .wrap{display:flex;gap:14px 24px;flex-wrap:wrap;align-items:center}
+footer .powered{margin-left:auto}
+.mark{display:inline-grid;place-items:center;color:var(--ink)} .mark svg{width:100%;height:100%;display:block}
+.brand .mark{width:28px;height:28px}
+.powered{display:inline-flex;align-items:center;gap:9px;padding:7px 14px 7px 8px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--ink2);font:600 13px var(--sans);letter-spacing:.3px}
+.powered .mark{width:22px;height:22px} .powered b{color:var(--ink);letter-spacing:1px}
+.powered:hover{border-color:var(--ink3);text-decoration:none}
+.layers{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.layers{grid-template-columns:1fr}}
+.layer{border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:var(--panel);box-shadow:var(--shadow)}
+.layer .tagline{font:600 11px var(--mono);letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3)}
+.layer.res{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 7%,var(--panel)),var(--panel))}
+.layer.res .tagline{color:var(--accent)}
+.layer h3{margin:6px 0 8px;font-size:18px}
+.layer ul{margin:0;padding-left:18px;color:var(--ink2);font-size:14.5px} .layer li{margin:4px 0}
+.resolve{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 4px;font:600 13.5px var(--mono);color:var(--ink2)}
+.resolve span{padding:6px 12px;border-radius:9px;background:var(--panel2);border:1px solid var(--line)}
+.resolve span span{padding:0;border:0;background:none}
+.resolve span.hi{background:color-mix(in srgb,var(--accent) 14%,var(--panel));border-color:color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--ink)}
+.resolve i{font-style:normal;color:var(--ink3)}
+.case{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:16px}
+.case>*{min-width:0}
+@media (max-width:860px){.case{grid-template-columns:1fr}}
+.tl{list-style:none;margin:8px 0 0;padding:0;position:relative}
+.tl li{position:relative;padding:0 0 14px 26px;color:var(--ink2);font-size:14.5px}
+.tl li::before{content:"";position:absolute;left:6px;top:8px;width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.tl li::after{content:"";position:absolute;left:10px;top:20px;bottom:-2px;width:1px;background:var(--line)}
+.tl li:last-child::after{display:none}
+.tl b{color:var(--ink);font-weight:600}
+.contact{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;align-items:stretch}
+.contact>*{min-width:0}
+@media (max-width:860px){.contact{grid-template-columns:1fr}}
+.mailcard{display:flex;flex-direction:column;justify-content:space-between;gap:10px;padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);color:var(--ink)}
+.mailcard:hover{border-color:var(--accent);text-decoration:none}
+.mailcard .addr{font:700 18px var(--mono);word-break:break-all}
+.mailcard small{color:var(--ink3);font-size:13px}
+.mailcard .go{font:600 13px var(--sans);color:var(--accent)}
+</style>
+<style>
+header.top .brand,nav.links a,.btn{white-space:nowrap}
+.doc{display:grid;grid-template-columns:230px 1fr;gap:32px;padding-top:36px;padding-bottom:60px}
+.doc>*{min-width:0}
+.toc{position:sticky;top:76px;align-self:start;display:flex;flex-direction:column;gap:2px;font-size:13.5px;max-height:calc(100vh - 100px);overflow:auto}
+.toc b{font-size:12px;color:var(--ink3);letter-spacing:1px;margin-bottom:6px}
+.toc a{color:var(--ink2);padding:4px 10px;border-radius:7px} .toc a:hover{background:var(--panel2);text-decoration:none;color:var(--ink)}
+@media (max-width:900px){.doc{grid-template-columns:1fr}.toc{position:static;max-height:none;flex-direction:row;flex-wrap:wrap}}
+.md h1{font-size:clamp(28px,4vw,40px);margin:0 0 12px;letter-spacing:-.4px}
+.md h2{font-size:24px;margin:44px 0 12px;padding-top:20px;border-top:1px solid var(--line);scroll-margin-top:76px}
+.md h3{font-size:18px;margin:26px 0 8px}
+.md p,.md li{color:var(--ink2)} .md strong{color:var(--ink)}
+.md blockquote{margin:12px 0;border-left:3px solid var(--accent2);background:var(--panel2);padding:8px 14px;border-radius:0 10px 10px 0}
+.md blockquote p{margin:4px 0;font-size:14.5px}
+.md .tblw{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto;margin:12px 0}
+.md .tblw table{min-width:100%}
+.md hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+.md pre code{background:none;padding:0;color:inherit}
+.md li.chk{list-style:none;margin-left:-20px} .md li.chk::before{content:"☐ ";color:var(--accent)}
+.md li code,.md p code{word-break:break-all}
+.md td code{white-space:nowrap}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html"><span class="mark"><svg viewBox="0 0 407 407" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M182.8 405.9C140.5 401.8 98.2 382.9 66.5 353.9C29.6 320.1 7.8 277.9 1.0 226.7C-1.6 207.1 0.4 176.4 5.6 155.0C14.5 118.9 34.1 84.5 61.0 58.1C91.1 28.5 128.3 9.9 172.5 2.4C185.1 0.2 217.4 -0.1 231.0 1.9C275.4 8.2 315.5 28.3 347.0 59.9C370.1 83.1 385.3 107.4 395.5 137.2C413.6 190.6 409.7 246.2 384.3 296.2C378.7 307.3 367.4 325.0 365.9 325.0C365.5 325.0 361.8 322.0 357.8 318.2C320.7 284.2 318.0 281.6 318.0 279.6C318.0 278.5 320.9 271.7 324.5 264.5C334.5 244.4 339.0 225.5 339.0 203.6C339.0 159.3 318.8 119.8 282.4 92.9C268.4 82.6 244.7 72.8 226.1 69.6C214.0 67.5 192.3 67.5 180.5 69.6C155.6 73.8 133.2 84.5 114.5 100.8C103.9 110.1 98.4 116.2 90.1 128.4C83.7 137.8 82.9 140.7 85.8 143.2C88.8 146.0 131.9 167.0 134.4 167.0C135.9 167.0 137.7 165.9 139.2 164.0C151.1 148.4 157.5 142.7 169.6 136.7C192.2 125.4 218.2 126.1 240.9 138.6C249.2 143.2 263.1 157.1 268.3 166.0C270.4 169.6 273.3 176.1 274.7 180.5C277.1 187.7 277.4 189.9 277.4 203.5C277.4 217.4 277.2 219.1 274.7 226.4C270.3 238.9 265.4 246.6 256.0 256.0C246.5 265.5 238.3 270.7 227.0 274.5C195.9 284.8 162.1 274.0 142.4 247.3C138.2 241.6 136.4 240.0 134.5 240.0C131.8 240.0 86.0 262.5 84.8 264.4C83.1 266.9 84.3 270.0 90.7 279.5C107.2 303.9 133.0 323.5 160.6 332.4C174.6 337.0 181.9 338.2 198.6 338.7C220.7 339.4 239.4 336.1 256.8 328.4C264.8 324.9 266.6 325.2 273.0 331.3C276.0 334.2 287.1 344.4 297.5 353.9C307.9 363.4 316.6 371.5 316.8 371.9C317.1 372.9 300.9 382.2 289.0 387.8C256.7 403.0 219.2 409.4 182.8 405.9Z"/></svg></span><span>QCC-Namespace · 运维手册</span></a>
+  <nav class="links">
+    <a href="index.html">首页</a>
+    <a href="#s3">单实例</a>
+    <a href="#s4">多实例</a>
+    <a href="#s5">企业发布</a>
+    <a href="#s10">故障处理</a>
+  </nav>
+  <div class="tools"><button class="btn" id="themeBtn" aria-label="theme">◐</button></div>
+</div></header>
+<main class="wrap doc">
+  <nav class="toc"><b>目录</b><a href="#s1">0. 先理解五个概念</a><a href="#s2">1. 准备</a><a href="#s3">2. 方案 A：单实例（一个公开 Namespace）</a><a href="#s4">3. 方案 B：单机多实例（公开 + 企业）</a><a href="#s5">4. 方案 C：发布企业 Namespace（协议与 Reserved）</a><a href="#s6">5. 扩容与节点类型</a><a href="#s7">6. HTTPS 与网站</a><a href="#s8">7. 开机自启（systemd）</a><a href="#s9">8. 日常运维</a><a href="#s10">9. 故障处理</a><a href="#s11">10. 上线检查清单</a><a href="#s12">附录 A · 配置项</a><a href="#s13">附录 B · HTTP 接口</a></nav>
+  <article class="md"><h1 id="s-57169683">QCC-Namespace 运维手册（Linux）</h1>
+<blockquote>
+<p>适用版本：qccname 1.0 · 系统：Ubuntu 24.04 / 26.04（其他发行版需自行核对脚本）
+本手册覆盖三种部署：<strong>A. 单实例</strong>（一个公开 Namespace）· <strong>B. 单机多实例</strong>（公开 + 企业，同一批服务器）· <strong>C. 企业 Namespace 的发布与维护</strong>（协议、Reserved）。
+文中以 QCC 官方的两套实例为例：<code>qccname-qccio</code>（公开，<code>.qcc</code>）和 <code>qccname-osnsg</code>（企业，<code>.osn</code> / <code>.osnsg</code>）。换成你自己的实例名、地址和交易 hash 即可。</p>
+</blockquote>
+<hr />
+<h2 id="s1">0. 先理解五个概念</h2>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>概念</th>
+<th>含义</th>
+<th>在哪里配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>实例（instance）</strong></td>
+<td>一套独立的 Namespace：一份协议、一个集群、一份数据。公开和企业是两个实例</td>
+<td><code>instance=</code></td>
+</tr>
+<tr>
+<td><strong>集群</strong></td>
+<td>同一实例的所有节点。节点数不用配置：新节点通过 <code>seeds</code> 自动加入，主节点维护成员表</td>
+<td><code>clusterKey=</code>（同实例相同）</td>
+</tr>
+<tr>
+<td><strong>节点类型</strong></td>
+<td><code>genesis</code> 创世（每个实例只有第一台）· <code>production</code> 核心（参与确认与选主）· <code>backup</code> 冗余（只同步、提供查询）</td>
+<td><code>type=</code></td>
+</tr>
+<tr>
+<td><strong>引导协议</strong></td>
+<td>一份 JSON，写着全部规则。发布到 QCC 公链，节点按 hash 加载；交易发送者即该实例的<strong>发布者</strong></td>
+<td><code>protocol=</code> <code>protocolHash=</code> <code>protocolTx=</code></td>
+</tr>
+<tr>
+<td><strong>Reserved</strong></td>
+<td>发布者签名上链的管理名表（admin、cto…），优先于注册信息；可换人、冻结、释放</td>
+<td><code>Reserved.config</code>（交易 hash 列表）</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>过半规则</strong>：写入确认和选主都以「成员表中核心节点数」为分母，而不是在线节点数。3 台核心可坏 1 台，5 台可坏 2 台；只有 2 台核心时任何一台故障都无法选主，所以<strong>每个实例至少 3 台核心</strong>。</p>
+<hr />
+<h2 id="s2">1. 准备</h2>
+<h3 id="s-90736751">1.1 服务器</h3>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>系统</td>
+<td>Ubuntu 24.04 / 26.04（root 或可 sudo 的用户）</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>512MB 起（256MB 可运行，约 8 万名称以内）；每多一个实例约多 150MB</td>
+</tr>
+<tr>
+<td>网络</td>
+<td>核心节点用公网 IPv4；IPv6 / 家庭网络适合做 <code>backup</code></td>
+</tr>
+<tr>
+<td>分布</td>
+<td>同一实例的核心节点放在不同服务商 / 机房，避免整体同时故障</td>
+</tr>
+<tr>
+<td>Java</td>
+<td>23 以上；脚本发现没有会自动安装 Java 25</td>
+</tr>
+<tr>
+<td>时间</td>
+<td>必须 NTP 同步（节点间加密消息时间窗 ±60 秒），脚本会自动开启</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s-88128043">1.2 端口</h3>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>端口</th>
+<th>用途</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>9180/TCP</td>
+<td>公开实例：节点互联 + HTTP API + 网站</td>
+<td>同实例所有节点互通，对外开放</td>
+</tr>
+<tr>
+<td>9181/TCP</td>
+<td>企业实例（第二个实例）</td>
+<td>每多一个实例用一个新端口</td>
+</tr>
+<tr>
+<td>443/TCP</td>
+<td>HTTPS 网站（可选）</td>
+<td>同机只有一个实例能占用；被占用时其他实例自动跳过 HTTPS</td>
+</tr>
+</tbody>
+</table></div>
+<p>脚本只在<strong>本机防火墙</strong>（ufw / firewalld / iptables）放行端口，<strong>云厂商控制台的安全组需要自己放行</strong>（IPv4 与 IPv6）。</p>
+<h3 id="s-14518649">1.3 打包（开发机）</h3>
+<pre><code class="language-bash">./gradlew selfTest jar          # 先跑全部自测，再打包
+# 产物：build/libs/qccname.jar（依赖已打入，一个文件）
+</code></pre>
+<p>同一个 <code>qccname.jar</code> 用于所有实例，<strong>不需要为不同实例改名</strong>。</p>
+<h3 id="s-17752719">1.4 每台服务器需要的文件</h3>
+<pre><code>qccname.jar                      # 程序（各实例相同）
+qccname.sh                       # 运维脚本（各实例相同）
+qccname.properties               # 配置（每个实例一份）
+qcc-name-*.json                  # 该实例的引导协议文件（必须和链上逐字节一致）
+Reserved.config                  # 仅企业实例需要
+</code></pre>
+<hr />
+<h2 id="s3">2. 方案 A：单实例（一个公开 Namespace）</h2>
+<p>示例：3 台服务器 S1 / S2 / S3，部署公开实例 <code>qccname-qccio</code>。</p>
+<h3 id="s-37469912">步骤 1 · 生成集群密钥（只做一次）</h3>
+<pre><code class="language-bash">openssl rand -hex 32            # 结果填入每台的 clusterKey，三台相同；不要提交到代码仓库
+</code></pre>
+<h3 id="s-62268389">步骤 2 · 每台服务器放置文件</h3>
+<pre><code class="language-bash">sudo mkdir -p /opt/qccname-qccio &amp;&amp; cd /opt/qccname-qccio
+# 上传：qccname.jar  qccname.sh  qcc-name-public-v1.0.0.json
+chmod +x qccname.sh
+</code></pre>
+<h3 id="s-66304447">步骤 3 · 配置 S1（创世节点）</h3>
+<p><code>/opt/qccname-qccio/qccname.properties</code></p>
+<pre><code class="language-properties">nodeId=&lt;S1 的 QCC 地址&gt;
+clusterKey=&lt;步骤 1 的 64 位 hex&gt;
+type=genesis
+seeds=
+port=9180
+instance=qccname-qccio
+protocol=qcc-name-public-v1.0.0.json
+protocolHash=b0aac8365988fa86a04b0802dcd682abaa2f59ea3f48cc3cc50ac559772f058c
+protocolTx=7a63c86747c75b860479f16fd0b1307f9d78fe4e29169908004b63ed63170ce3
+#advertiseIp=                   # 留空自动判定；云主机 1:1 NAT（AWS/GCP/Azure）必须填公网 IP
+</code></pre>
+<h3 id="s-98013800">步骤 4 · 检查并启动 S1</h3>
+<pre><code class="language-bash">./qccname.sh check              # 系统 / Java / 文件 / 时间 / IPv6 / 防火墙
+./qccname.sh start
+</code></pre>
+<p>启动输出中应看到：</p>
+<pre><code>协议交易 7a63c86747c75b86… 高度 26730  发布者 QMnGE6…
+保留名 启用，发布者 QMnGE6…，交易列表 …/Reserved.config（每 30 秒检查）
+集群 …
+</code></pre>
+<h3 id="s-32693396">步骤 5 · 配置并启动 S2、S3（核心节点）</h3>
+<p>与 S1 相同，只改三行：</p>
+<pre><code class="language-properties">nodeId=&lt;本机 QCC 地址&gt;
+type=production
+seeds=&lt;S1 公网 IP&gt;:9180
+</code></pre>
+<pre><code class="language-bash">./qccname.sh start
+</code></pre>
+<h3 id="s-5484214">步骤 6 · 核对集群</h3>
+<pre><code class="language-bash">curl http://&lt;任一节点&gt;:9180/v1/status
+</code></pre>
+<p>三台返回的 <code>term</code>、<code>seq</code>、<code>execHash</code> 一致，<code>cluster.cores</code> 为 3 个，<code>role</code> 一台是主、两台是备。</p>
+<h3 id="s-26865541">步骤 7 · 核对功能</h3>
+<pre><code class="language-bash">curl &quot;http://&lt;IP&gt;:9180/v1/check?name=test.qcc&quot;          # 可注册
+curl &quot;http://&lt;IP&gt;:9180/v1/reserved&quot;                     # 公开实例：enabled=true，names 为空
+</code></pre>
+<hr />
+<h2 id="s4">3. 方案 B：单机多实例（公开 + 企业）</h2>
+<p>同一批服务器上，每个实例<strong>一个应用目录、一个进程、一个端口</strong>，数据完全隔离。</p>
+<h3 id="s-60498290">3.1 目录与数据布局</h3>
+<pre><code>/opt/qccname-qccio/                      /opt/qccname-osnsg/
+  qccname.jar                              qccname.jar            （同一个文件复制一份）
+  qccname.sh                               qccname.sh
+  qccname.properties  (port=9180)          qccname.properties  (port=9181)
+  qcc-name-public-v1.0.0.json              qcc-name-osn-v1.0.0.json
+                                           Reserved.config
+
+~/qccname/
+  qccname-qccio/{nodeId}/  logs/  qccname.pid      ← 公开实例数据（按 instance 名分目录）
+  qccname-osnsg/{nodeId}/  logs/  qccname.pid      ← 企业实例数据
+  ssl/   web/   web-osn/   dev/                    ← 同机共用（证书、网站、开发密钥）
+</code></pre>
+<h3 id="s-34533338">3.2 两个实例的差异</h3>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>公开实例 qccio</th>
+<th>企业实例 osnsg</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>instance</code></td>
+<td><code>qccname-qccio</code></td>
+<td><code>qccname-osnsg</code></td>
+<td>必须不同，同时是数据目录名</td>
+</tr>
+<tr>
+<td><code>port</code></td>
+<td><code>9180</code></td>
+<td><code>9181</code></td>
+<td>必须不同</td>
+</tr>
+<tr>
+<td><code>clusterKey</code></td>
+<td>密钥 A</td>
+<td>密钥 B</td>
+<td>建议不同，配错时不会串到对方集群</td>
+</tr>
+<tr>
+<td><code>seeds</code></td>
+<td><code>IP:9180</code></td>
+<td><code>IP:9181</code></td>
+<td>指向同一实例的端口</td>
+</tr>
+<tr>
+<td><code>protocol</code></td>
+<td><code>qcc-name-public-v1.0.0.json</code></td>
+<td><code>qcc-name-osn-v1.0.0.json</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>protocolHash</code></td>
+<td><code>b0aac836…058c</code></td>
+<td><code>c5e83193…a9a6</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>protocolTx</code></td>
+<td><code>7a63c867…0ce3</code></td>
+<td><code>3738af48…949b</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>httpsPort</code></td>
+<td><code>443</code></td>
+<td><code>0</code>（关闭）</td>
+<td>同机只有一个能占 443</td>
+</tr>
+<tr>
+<td><code>webDir</code></td>
+<td><code>/root/qccname/web</code></td>
+<td><code>/root/qccname/web-osn</code></td>
+<td>各自的网站</td>
+</tr>
+<tr>
+<td><code>nodeId</code></td>
+<td>本机地址</td>
+<td>可与公开实例相同</td>
+<td>数据已按实例分开</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s-95372897">3.3 企业实例完整配置</h3>
+<p><code>/opt/qccname-osnsg/qccname.properties</code></p>
+<pre><code class="language-properties">nodeId=&lt;本机 QCC 地址&gt;
+clusterKey=&lt;企业实例专用 64 位 hex&gt;
+type=genesis                     # 第一台；其余 production，并填 seeds
+#seeds=&lt;第一台 IP&gt;:9181
+port=9181
+instance=qccname-osnsg
+protocol=qcc-name-osn-v1.0.0.json
+protocolHash=c5e831931ac2b8a445bc1440be57b5249c8e635f1b329c14a3efdfa8c129a9a6
+protocolTx=3738af4899d88efdf1f357143c98379a0cd3505a2a7675b592dc9028cf98949b
+httpsPort=0
+webDir=/root/qccname/web-osn
+#reserved=Reserved.config        # 默认就是应用目录下的这个文件
+</code></pre>
+<p><code>/opt/qccname-osnsg/Reserved.config</code>（所有企业节点相同，见第 4.3 节）</p>
+<pre><code>c5123d5e0d3d6a63b6b7c0376c9851edd21f7e5f742535504a718c6a24126012   # seq 1
+</code></pre>
+<h3 id="s-30490871">3.4 启动</h3>
+<pre><code class="language-bash">cd /opt/qccname-qccio &amp;&amp; ./qccname.sh check &amp;&amp; ./qccname.sh start
+cd /opt/qccname-osnsg &amp;&amp; ./qccname.sh check &amp;&amp; ./qccname.sh start
+</code></pre>
+<p><code>check</code> 在两个目录各执行一次，分别放行 9180 与 9181。</p>
+<h3 id="s-89512866">3.5 推荐拓扑（7 台服务器）</h3>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>服务器</th>
+<th>qccio（9180）</th>
+<th>osnsg（9181）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1</td>
+<td>genesis</td>
+<td>genesis</td>
+</tr>
+<tr>
+<td>S2</td>
+<td>production</td>
+<td>production</td>
+</tr>
+<tr>
+<td>S3</td>
+<td>production</td>
+<td>production</td>
+</tr>
+<tr>
+<td>S4–S5</td>
+<td>production</td>
+<td>—</td>
+</tr>
+<tr>
+<td>S6–S7（IPv6）</td>
+<td>backup</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>公开实例 5 核心 + 2 冗余，企业实例 3 核心；一共 7 台服务器、10 个进程。</p>
+<h3 id="s-32657937">3.6 核对企业实例</h3>
+<pre><code class="language-bash">./qccname.sh log                 # 30 秒内出现：[保留名] 已生效 tx c5123d5e…
+curl http://&lt;IP&gt;:9181/v1/reserved
+curl &quot;http://&lt;IP&gt;:9181/v1/verify?name=dev.osn&amp;address=QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4&quot;   # match:true, reserved:true
+curl &quot;http://&lt;IP&gt;:9181/v1/check?name=admin.osn&quot;                                              # 拒绝：保留名
+</code></pre>
+<hr />
+<h2 id="s5">4. 方案 C：发布企业 Namespace（协议与 Reserved）</h2>
+<h3 id="s-90884986">4.1 发布引导协议</h3>
+<ol>
+<li>准备协议文件（如 <code>qcc-name-osn-v1.0.0.json</code>），<strong>不要用编辑器重新保存</strong>（换行、BOM 都会改变 hash）。</li>
+<li>用<strong>企业发布地址</strong>以 QCCData 交易提交原文件。这个地址从此是唯一能发布 Reserved 的地址，以后不能更换（更换 = 重新发布协议 + 数据重置），<strong>建议多签 / 冷钱包</strong>。</li>
+<li>核对上链结果：</li>
+</ol>
+<pre><code class="language-bash">TX=&lt;交易 hash&gt;
+curl -s http://&lt;QCC 链节点&gt;:9080/v1/hash/$TX | python3 -c &quot;import sys,json,hashlib;o=json.load(sys.stdin);t=json.loads(json.loads(o['data'])['tx']);b=bytes(x&amp;0xFF for x in t['payload']);print('from',t['from']);print(len(b),hashlib.sha3_256(b).hexdigest())&quot;
+</code></pre>
+<p><code>from</code> 必须是企业发布地址，hash 必须等于本地文件的 hash（<code>openssl dgst -sha3-256 文件</code>）。</p>
+<ol start="4">
+<li>节点配置 <code>protocolHash</code> 与 <code>protocolTx</code>。节点启动时会自动做同样的核对，不一致拒绝启动。</li>
+</ol>
+<blockquote>
+<p><strong>QCC 链节点不是都有 SSL</strong>：统一用 <code>http://&lt;IP&gt;:9080/v1/hash/&lt;tx&gt;</code>。查不到时返回 <code>{"ok":false,"error":"transaction not found: …"}</code>。</p>
+</blockquote>
+<h3 id="s-78238439">4.2 编写与发布 Reserved</h3>
+<pre><code class="language-json">{
+  &quot;protocol&quot;: &quot;qcc-name-reserved&quot;,
+  &quot;version&quot;: &quot;1.0.0&quot;,
+  &quot;nameProtocolHash&quot;: &quot;&lt;本实例协议 hash&gt;&quot;,
+  &quot;seq&quot;: 1,
+  &quot;prevTx&quot;: &quot;&quot;,
+  &quot;names&quot;: {
+    &quot;admin.osn&quot;:    &quot;QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4&quot;,
+    &quot;support.osn&quot;:  &quot;&quot;
+  },
+  &quot;release&quot;: []
+}
+</code></pre>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>规则</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>发布者</td>
+<td>必须与协议的发布地址相同，否则拒绝（50）</td>
+</tr>
+<tr>
+<td><code>nameProtocolHash</code></td>
+<td>必须是<strong>当前</strong>协议的 hash；用错会被拒绝（52）</td>
+</tr>
+<tr>
+<td><code>seq</code> / <code>prevTx</code></td>
+<td>首版 seq=1、prevTx=""；之后每版 seq+1，prevTx = 上一版交易 hash（53）</td>
+</tr>
+<tr>
+<td>生效时间</td>
+<td>交易所在区块高度；高度必须递增（54）</td>
+</tr>
+<tr>
+<td>完整表</td>
+<td>每版写完整的表；去掉的名字必须写进 <code>release</code>，否则拒绝（55）</td>
+</tr>
+<tr>
+<td>空地址 <code>""</code></td>
+<td>保留但不绑定（查询结果为不存在）</td>
+</tr>
+<tr>
+<td>格式</td>
+<td>UTF-8、LF 换行、无 BOM、字段不多不少；名字的 tag 必须在协议中</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s-69533125">4.3 Reserved.config 规则</h3>
+<pre><code># ✗ 作废 · 高度 26734 · nameProtocolHash 用错 → 必须注释
+#c7d2f8f17af6ca848f6b71d44ec2212419a937840038efd0eeeb7fe78306dddd   # seq 1（错误版）
+
+# ✓ 生效 · 高度 26735
+c5123d5e0d3d6a63b6b7c0376c9851edd21f7e5f742535504a718c6a24126012   # seq 1
+</code></pre>
+<ul>
+<li>每行一个交易 hash，按发布顺序追加；<code>#</code> 之后为注释；每 30 秒自动检查，<strong>不需要重启</strong>。</li>
+<li>节点按行处理，<strong>遇到不合格的一行就停住</strong>，后面的行都不处理 → 发错的交易必须注释掉。</li>
+<li>文件不是权威：权威是链上交易 + 日志里的 reserve 记录。删掉某行<strong>不会撤销</strong>已生效的版本。</li>
+<li>所有企业核心节点放同一份（任何一台都可能接任主节点）。</li>
+</ul>
+<h3 id="s-55387356">4.4 常见管理操作</h3>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>操作</th>
+<th>新一版 Reserved 怎么写</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>管理员换人</td>
+<td><code>"admin.osn": "&lt;新地址&gt;"</code></td>
+</tr>
+<tr>
+<td>新增管理名</td>
+<td>在 <code>names</code> 中加一行</td>
+</tr>
+<tr>
+<td>冻结可疑账户</td>
+<td><code>"abc.osn": ""</code> → 原注册立即移除，名字锁定，形近名同样不能注册</td>
+</tr>
+<tr>
+<td>释放名字</td>
+<td>从 <code>names</code> 删除并写进 <code>"release": ["abc.osn"]</code> → 重新开放注册</td>
+</tr>
+</tbody>
+</table></div>
+<p>每次：编写 → 发布者上链 → 核对（4.1 第 3 步的命令）→ 追加到 <code>Reserved.config</code> → <code>curl …/v1/reserved</code> 确认 seq 增加。</p>
+<hr />
+<h2 id="s6">5. 扩容与节点类型</h2>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>操作</th>
+<th>做法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>加核心节点</td>
+<td>新机配置 <code>type=production</code>、<code>seeds=&lt;任一已运行节点&gt;:端口</code>，启动即自动加入</td>
+</tr>
+<tr>
+<td>加冗余节点</td>
+<td><code>type=backup</code>，同上；IPv6 节点 seeds 写成 <code>[IPv6地址]:端口</code></td>
+</tr>
+<tr>
+<td>永久下线节点</td>
+<td>在<strong>主节点本机</strong>：<code>curl -X POST "http://127.0.0.1:9180/admin/remove?id=&lt;节点地址&gt;"</code>（否则一直计入过半分母）</td>
+</tr>
+<tr>
+<td>更换节点类型</td>
+<td>先 <code>/admin/remove</code>，清空该节点的 <code>~/qccname/&lt;instance&gt;/&lt;nodeId&gt;/</code>，改 type 后重新启动</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="s7">6. HTTPS 与网站</h2>
+<h3 id="s-45658219">6.1 网站</h3>
+<ul>
+<li>把静态文件放进 <code>webDir</code>（默认 <code>~/qccname/web</code>），HTTP 端口和 HTTPS 端口都会提供；<strong>替换文件即生效</strong>。</li>
+<li>企业实例用单独目录：<code>webDir=/root/qccname/web-osn</code>，放企业介绍页 <code>index.html</code> 与协议说明 <code>osn.html</code>。</li>
+</ul>
+<h3 id="s-50339805">6.2 证书（以 Let's Encrypt 为例）</h3>
+<pre><code class="language-bash">sudo apt install certbot
+sudo certbot certonly --standalone -d ns.example.com      # 需临时空出 80 端口
+sudo mkdir -p /root/qccname/ssl
+sudo openssl pkcs12 -export \
+  -in /etc/letsencrypt/live/ns.example.com/fullchain.pem \
+  -inkey /etc/letsencrypt/live/ns.example.com/privkey.pem \
+  -out /root/qccname/ssl/qccname.p12 -passout pass:&lt;密码&gt;
+</code></pre>
+<pre><code class="language-properties">httpsPort=443
+keystore=/root/qccname/ssl/qccname.p12
+keystorePass=&lt;密码&gt;
+</code></pre>
+<p>证书续期后重新导出同名文件即可，10 分钟内自动热加载。443 已被同机另一实例占用、或证书缺失时，节点<strong>跳过 HTTPS 继续启动</strong>，日志写明原因。</p>
+<hr />
+<h2 id="s8">7. 开机自启（systemd）</h2>
+<p>单实例用 <code>deploy/qccname.service</code>；多实例用模板单元 <code>deploy/qccname@.service</code>（实例名对应 <code>/opt/qccname-&lt;名称&gt;</code>）：</p>
+<pre><code class="language-bash">sudo cp deploy/qccname@.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now qccname@qccio qccname@osnsg
+systemctl status qccname@osnsg
+journalctl -u qccname@osnsg -f
+</code></pre>
+<blockquote>
+<p>选择 systemd 后就不要再用 <code>./qccname.sh start</code> 启动同一实例（两者会重复启动）；<code>status</code> / <code>log</code> 仍可使用。</p>
+</blockquote>
+<hr />
+<h2 id="s9">8. 日常运维</h2>
+<h3 id="s-88714079">8.1 命令（在实例目录下执行）</h3>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>./qccname.sh start</code></td>
+<td>环境检查 → 放行防火墙 → 后台启动，显示本次启动日志</td>
+</tr>
+<tr>
+<td><code>./qccname.sh stop</code></td>
+<td>正常退出，10 秒未退出则强制结束</td>
+</tr>
+<tr>
+<td><code>./qccname.sh restart</code></td>
+<td>重启</td>
+</tr>
+<tr>
+<td><code>./qccname.sh status</code></td>
+<td>进程、内存、节点状态、最近一条进度</td>
+</tr>
+<tr>
+<td><code>./qccname.sh log</code></td>
+<td>实时跟踪当天运行日志（Ctrl+C 退出，不影响节点）</td>
+</tr>
+<tr>
+<td><code>./qccname.sh console</code></td>
+<td>控制台最后 100 行（启动失败、异常堆栈看这里）</td>
+</tr>
+<tr>
+<td><code>./qccname.sh check</code></td>
+<td>只检查环境，不启动</td>
+</tr>
+</tbody>
+</table></div>
+<p>内存默认按本机内存自动选择，可覆盖：<code>QCCNAME_XMX=256m ./qccname.sh start</code>。</p>
+<h3 id="s-97869179">8.2 升级程序</h3>
+<ol>
+<li>开发机 <code>./gradlew selfTest jar</code>，全部通过后再发布。</li>
+<li>按「<strong>备节点逐台 → 最后主节点</strong>」的顺序：替换 <code>qccname.jar</code> → <code>./qccname.sh restart</code> → <code>status</code> 确认追平后再下一台。</li>
+<li>主节点重启时会短暂选主（核心 ≥3 时约 30–40 秒）。</li>
+</ol>
+<blockquote>
+<p>只换 jar 不换协议文件时，数据不受影响。<strong>协议文件变化 = 新的 protocolHash = 新实例</strong>，需要重新创世（清空该实例数据目录）。</p>
+</blockquote>
+<h3 id="s-25605270">8.3 备份</h3>
+<pre><code class="language-bash">tar czf qccname-osnsg-$(date +%F).tgz -C ~/qccname qccname-osnsg /opt/qccname-osnsg/qccname.properties /opt/qccname-osnsg/Reserved.config
+</code></pre>
+<p>任何一个健康节点的数据都是完整副本；新节点也可以直接加入集群全量同步，备份主要用于 <code>clusterKey</code> 与配置的留存。</p>
+<hr />
+<h2 id="s10">9. 故障处理</h2>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因 / 处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>启动报 <code>protocolTx 的 payload hash … 与本地协议文件 … 不同</code></td>
+<td>本地协议文件与链上不一致（被编辑器改过、拿错文件）→ 重新取原文件</td>
+</tr>
+<tr>
+<td>启动反复 <code>取回 protocolTx 失败（第 N 次，10 秒后重试）</code></td>
+<td>链节点不可达 → 检查 <code>chains=</code> 与网络；节点会一直重试</td>
+</tr>
+<tr>
+<td>启动报 <code>链上查不到 protocolTx</code></td>
+<td>交易 hash 写错或尚未确认</td>
+</tr>
+<tr>
+<td>日志 <code>[保留名] … 未生效：DROPPED(50)</code></td>
+<td>Reserved 不是协议发布者发的</td>
+</tr>
+<tr>
+<td><code>…(52)</code></td>
+<td>Reserved 文档格式错，或 <code>nameProtocolHash</code> 不是当前协议</td>
+</tr>
+<tr>
+<td><code>…(53)</code></td>
+<td>seq 不连续或 prevTx 没有指向上一版</td>
+</tr>
+<tr>
+<td><code>…(54)</code></td>
+<td>区块高度没有递增（文件里的顺序与发布顺序不一致）</td>
+</tr>
+<tr>
+<td><code>…(55)</code></td>
+<td>去掉了名字却没写进 release</td>
+</tr>
+<tr>
+<td>日志 <code>HTTPS 跳过：端口 443 已被占用</code></td>
+<td>同机另一实例已占用 443，属正常；或改用其他端口</td>
+</tr>
+<tr>
+<td>写入返回 <code>PENDING</code></td>
+<td>确认不足过半（核心宕机过多）→ 恢复任意核心节点</td>
+</tr>
+<tr>
+<td>主节点宕机（核心 ≥3）</td>
+<td>约 30–40 秒自动接班</td>
+</tr>
+<tr>
+<td>主节点宕机（核心 &lt;3）</td>
+<td>不自动接班；必要时在备节点本机 <code>curl -X POST http://127.0.0.1:&lt;端口&gt;/admin/promote</code></td>
+</tr>
+<tr>
+<td>旧主恢复</td>
+<td>自动退位；本地未确认的数据自动清空并重新同步</td>
+</tr>
+<tr>
+<td><code>/v1/status</code> 各节点 execHash 不同</td>
+<td>立即停止写入，保留日志联系开发；常见原因是协议文件或 protocolTx 不一致</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="s11">10. 上线检查清单</h2>
+<ul>
+<li class="chk">协议已上链，<code>from</code> 与 hash 已核对（4.1）</li>
+<li class="chk">每台 <code>protocolHash</code>、<code>protocolTx</code> 与链上一致；同实例 <code>clusterKey</code> 相同</li>
+<li class="chk">多实例：<code>instance</code>、<code>port</code> 各不相同；<code>seeds</code> 指向同实例端口</li>
+<li class="chk"><code>advertiseIp</code> 不是内网地址（公网部署）</li>
+<li class="chk">云厂商安全组已放行 9180 / 9181 / 443</li>
+<li class="chk">每个实例 ≥3 台核心，<code>/v1/status</code> 一致</li>
+<li class="chk">企业实例：<code>Reserved.config</code> 已放置，日志出现 <code>[保留名] 已生效</code>，<code>/v1/reserved</code> 的 seq 正确</li>
+<li class="chk">发布地址已妥善保管（多签 / 冷钱包）</li>
+<li class="chk"><code>clusterKey</code>、配置与 <code>Reserved.config</code> 已备份</li>
+</ul>
+<hr />
+<h2 id="s12">附录 A · 配置项</h2>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>键</th>
+<th>默认</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeId</code></td>
+<td>代码默认</td>
+<td>本机 QCC 地址</td>
+</tr>
+<tr>
+<td><code>clusterKey</code></td>
+<td>—</td>
+<td>64 位 hex，同实例相同（必填）</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>production</code></td>
+<td><code>genesis</code> / <code>production</code> / <code>backup</code></td>
+</tr>
+<tr>
+<td><code>seeds</code></td>
+<td>—</td>
+<td>已运行节点 <code>IP:端口</code>，逗号分隔；genesis 留空</td>
+</tr>
+<tr>
+<td><code>advertiseIp</code></td>
+<td>自动</td>
+<td>本机公告 IP</td>
+</tr>
+<tr>
+<td><code>port</code></td>
+<td><code>9180</code></td>
+<td>节点互联 + HTTP</td>
+</tr>
+<tr>
+<td><code>bind</code></td>
+<td><code>::</code></td>
+<td>监听地址</td>
+</tr>
+<tr>
+<td><code>instance</code></td>
+<td><code>qccname-test</code></td>
+<td>实例名，也是数据目录名</td>
+</tr>
+<tr>
+<td><code>home</code></td>
+<td><code>~/qccname/&lt;instance&gt;</code></td>
+<td>数据目录</td>
+</tr>
+<tr>
+<td><code>protocol</code></td>
+<td><code>qcc-name-public-v1.0.0.json</code></td>
+<td>协议文件</td>
+</tr>
+<tr>
+<td><code>protocolHash</code></td>
+<td>—</td>
+<td>协议 hash，公网必填</td>
+</tr>
+<tr>
+<td><code>protocolTx</code></td>
+<td>—</td>
+<td>协议上链交易；配置后启用 Reserved</td>
+</tr>
+<tr>
+<td><code>reserved</code></td>
+<td><code>Reserved.config</code></td>
+<td>Reserved 交易列表文件</td>
+</tr>
+<tr>
+<td><code>chains</code></td>
+<td>代码默认</td>
+<td>QCC 链 API，逗号分隔，按顺序故障切换</td>
+</tr>
+<tr>
+<td><code>webDir</code></td>
+<td><code>~/qccname/web</code></td>
+<td>静态网站目录</td>
+</tr>
+<tr>
+<td><code>httpsPort</code></td>
+<td><code>443</code></td>
+<td><code>0</code> 关闭</td>
+</tr>
+<tr>
+<td><code>keystore</code> / <code>keystorePass</code></td>
+<td><code>~/qccname/ssl/qccname.jks</code></td>
+<td>证书</td>
+</tr>
+<tr>
+<td><code>logOps</code></td>
+<td><code>true</code></td>
+<td>每次写入 / 同步打印一行</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="s13">附录 B · HTTP 接口</h2>
+<div class="tblw"><table>
+<thead>
+<tr>
+<th>接口</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /v1/status</code></td>
+<td>节点角色、term、seq、execHash、集群成员</td>
+</tr>
+<tr>
+<td><code>GET /v1/verify?name=&amp;address=</code></td>
+<td>名字与地址是否对应（含 <code>reserved</code> 字段与证据）</td>
+</tr>
+<tr>
+<td><code>GET /v1/check?name=</code></td>
+<td>注册前预检</td>
+</tr>
+<tr>
+<td><code>GET /v1/address?address=</code></td>
+<td>反查该地址名下的名字（含保留名）</td>
+</tr>
+<tr>
+<td><code>GET /v1/reserved</code></td>
+<td>当前 Reserved 表与全部历史</td>
+</tr>
+<tr>
+<td><code>GET /v1/pubkey?address=</code></td>
+<td>地址公钥</td>
+</tr>
+<tr>
+<td><code>POST /v1/register</code> · <code>/v1/unregister</code></td>
+<td>注册 / 删除（钱包签名）</td>
+</tr>
+<tr>
+<td><code>POST /admin/promote</code> · <code>/admin/remove</code> · <code>/admin/rejoin</code></td>
+<td>仅本机（127.0.0.1）可调用的管理接口</td>
+</tr>
+</tbody>
+</table></div></article>
+</main>
+<footer><div class="wrap">
+  <div>QCC-Namespace v1.0 · 运维手册 · 源文件 <code>docs/OPERATIONS.md</code> · <a href="mailto:dev@qccio.com">dev@qccio.com</a> · <a href="mailto:dev@osnsg.com">dev@osnsg.com</a></div>
+  <a class="powered" href="https://test.qccio.com" target="_blank" rel="noopener" style="margin-left:auto"><span class="mark"><svg viewBox="0 0 407 407" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M182.8 405.9C140.5 401.8 98.2 382.9 66.5 353.9C29.6 320.1 7.8 277.9 1.0 226.7C-1.6 207.1 0.4 176.4 5.6 155.0C14.5 118.9 34.1 84.5 61.0 58.1C91.1 28.5 128.3 9.9 172.5 2.4C185.1 0.2 217.4 -0.1 231.0 1.9C275.4 8.2 315.5 28.3 347.0 59.9C370.1 83.1 385.3 107.4 395.5 137.2C413.6 190.6 409.7 246.2 384.3 296.2C378.7 307.3 367.4 325.0 365.9 325.0C365.5 325.0 361.8 322.0 357.8 318.2C320.7 284.2 318.0 281.6 318.0 279.6C318.0 278.5 320.9 271.7 324.5 264.5C334.5 244.4 339.0 225.5 339.0 203.6C339.0 159.3 318.8 119.8 282.4 92.9C268.4 82.6 244.7 72.8 226.1 69.6C214.0 67.5 192.3 67.5 180.5 69.6C155.6 73.8 133.2 84.5 114.5 100.8C103.9 110.1 98.4 116.2 90.1 128.4C83.7 137.8 82.9 140.7 85.8 143.2C88.8 146.0 131.9 167.0 134.4 167.0C135.9 167.0 137.7 165.9 139.2 164.0C151.1 148.4 157.5 142.7 169.6 136.7C192.2 125.4 218.2 126.1 240.9 138.6C249.2 143.2 263.1 157.1 268.3 166.0C270.4 169.6 273.3 176.1 274.7 180.5C277.1 187.7 277.4 189.9 277.4 203.5C277.4 217.4 277.2 219.1 274.7 226.4C270.3 238.9 265.4 246.6 256.0 256.0C246.5 265.5 238.3 270.7 227.0 274.5C195.9 284.8 162.1 274.0 142.4 247.3C138.2 241.6 136.4 240.0 134.5 240.0C131.8 240.0 86.0 262.5 84.8 264.4C83.1 266.9 84.3 270.0 90.7 279.5C107.2 303.9 133.0 323.5 160.6 332.4C174.6 337.0 181.9 338.2 198.6 338.7C220.7 339.4 239.4 336.1 256.8 328.4C264.8 324.9 266.6 325.2 273.0 331.3C276.0 334.2 287.1 344.4 297.5 353.9C307.9 363.4 316.6 371.5 316.8 371.9C317.1 372.9 300.9 382.2 289.0 387.8C256.7 403.0 219.2 409.4 182.8 405.9Z"/></svg></span><span>Powered by <b>QCC</b></span></a>
+</div></footer>
+<script>
+(function(){var root=document.documentElement;
+  function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  function set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+  var th=get('qn-theme'); if(th) root.dataset.theme=th;
+  document.getElementById('themeBtn').onclick=function(){
+    var dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark'; set('qn-theme',root.dataset.theme)};
+})();
+</script>
+</body>
+</html>

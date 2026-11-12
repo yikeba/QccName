@@ -1,0 +1,20 @@
+# qccname 节点配置。复制为 ./qccname.properties 或 ~/qccname/config/qccname.properties。
+# 不存在时使用 QccNameConfig 里的代码默认值；未写的项也取代码默认值。
+
+# 全部节点：QCC 地址@公告IP:端口，逗号分隔。所有服务器必须完全一致（顺序即序号表，第一个为初始主节点）
+# IPv6 写成 地址@[2001:db8::1]:9180
+nodes=QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1@203.0.113.10:9180,QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4@203.0.113.11:9180
+
+# 本机节点地址。可留空：本机网卡上恰好有一个 nodes 中的 IP 时自动识别；云主机 NAT 之后必须填写
+self=
+
+# QCC 公链 API（本地开发链：http://127.0.0.1:9190）
+chain=https://test.qccio.com
+
+# 引导协议文件；protocolHash 为其原始字节 SHA3-256，上链后填写
+protocol=qcc-name-v1.0.0.json
+protocolHash=
+
+instance=qccname-test
+home=/data/qccname
+bind=0.0.0.0

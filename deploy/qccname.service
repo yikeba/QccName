@@ -1,0 +1,26 @@
+# systemd 单元。安装：
+#   sudo useradd -r -m -d /opt/qccname qccname
+#   解压 qccname-1.0.0.zip 到 /opt/qccname/app，配置放 /opt/qccname/app/qccname.properties
+#   sudo cp qccname.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#   sudo systemctl enable --now qccname
+#   journalctl -u qccname -f     或  tail -f /opt/qccname/data/logs/qccname-*.log
+[Unit]
+Description=QCC Namespace node
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=qccname
+WorkingDirectory=/opt/qccname/app
+# JVM 参数见 bin/qccname 中的 DEFAULT_JVM_OPTS；需要调整时用 QCCNAME_OPTS 覆盖 Xmx
+Environment=QCCNAME_OPTS=-Xmx128m
+ExecStart=/opt/qccname/app/bin/qccname
+Restart=on-failure
+RestartSec=5
+# 退出码 2 = 配置错误，不重启
+RestartPreventExitStatus=2
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

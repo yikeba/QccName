@@ -1,0 +1,15 @@
+{
+  "protocol": "qcc-name-reserved",
+  "version": "1.0.0",
+  "nameProtocolHash": "1171541a82f5e9075832bfa1ce5a79ef44c2a97ed6e2f601c849bc46ea4ac127",
+  "seq": 1,
+  "prevTx": "",
+  "names": {
+    "admin.qcc": "QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4",
+    "admin.osn": "QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4",
+    "support.osn": "QecAmMRVAgEvMSAVxCo4zmK15VQEssd822",
+    "security.osn": "",
+    "postmaster.osn": ""
+  },
+  "release": []
+}
