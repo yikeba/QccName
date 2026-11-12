@@ -1,0 +1,19 @@
+
+
+# ?? QCC ????????????????????????????? QccNameConfig.DEFAULT_NODE_ID
+nodeId=QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1
+type=genesis
+#type=production
+#seeds=192.168.1.11
+seeds=
+advertiseIp=192.168.1.12
+
+# ??? AES-256-GCM ???64 ? hex???????????openssl rand -hex 32??????????
+#clusterKey=28a3bbe4079ad84f5c84c4552df2e1f92029ff541df6b9f9034254b9d84e2d9f
+clusterKey=47c75b860479f16fd0b1307f9d78fe4e29169908004b63ed63170ce3e94c1x0p
+port=9181
+instance=qccname-osnsg
+protocol=qcc-name-osn-v1.0.0.json
+protocolHash=8ee7816a11cedbdcf081e09fecc37f6e846f2615fe610d1ff9ca7eaf7b120e79
+protocolTx=0dd9ad1eaadac7a75a4f168c30dd47b1c7efec1f1483e3efc7145718638653e1
+httpsPort=0

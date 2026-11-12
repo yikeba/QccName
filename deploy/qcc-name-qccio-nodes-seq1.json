@@ -1,0 +1,14 @@
+{
+  "protocol": "qcc-name-nodes",
+  "version": "1.0.0",
+  "nameProtocolHash": "b0aac8365988fa86a04b0802dcd682abaa2f59ea3f48cc3cc50ac559772f058c",
+  "seq": 1,
+  "prevTx": "",
+  "ttlSeconds": 600,
+  "nodes": [
+    {"nodeId": "QjU6WPAUroaGfTEM5Re3hhGG6fzrCZDYYa", "ip": "107.172.76.70", "port": 9180},
+    {"nodeId": "QSNpfQex1huKLaniCe2SBNJEUBXGdVyJcs", "ip": "107.174.172.115", "port": 9180},
+    {"nodeId": "QeUMXhnnFdxKFiqEPMUccg2Ez9fPCXGhqo", "ip": "23.238.114.9", "port": 9180},
+    {"nodeId": "QQWcfAQD1aTDp1NCoRCgm1LZWcfR4u79mL", "ip": "66.154.109.124", "port": 9180}
+  ]
+}
