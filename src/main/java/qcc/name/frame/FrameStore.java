@@ -1,10 +1,11 @@
-package qcc.name.store;
+package qcc.name.frame;
 
 import qcc.name.codec.QccCanonicalReader;
 import qcc.name.codec.QccCanonicalWriter;
 import qcc.name.codec.Sha3;
 import qcc.name.frame.FramePacket;
 import qcc.name.frame.NameFrame;
+import qcc.name.store.OpLogStore;
 
 import java.io.IOException;
 import java.nio.file.Files;

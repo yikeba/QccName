@@ -1,219 +1,172 @@
-# QCC-Namespace 架构与命名说明
+# QCC-Namespace v1.0 架构说明
 
-配套代码:第一至三批(codec / protocol / state / core),共 33+26+20 项自测通过。
-对应链上引导协议:`dd6eba18d557b4c3a99d4355390021488e052c088f49465ca0f7894109dfcb51`
-(交易 `f1134cb5df74dc9256e5604a29322470c532edbd4186e18b24e10834242a8627`,容器 342665)
+名称 `label.tag` ↔ ML-DSA-87 地址。可验证等级 **L1（结果可验证）**。JDK 23 + bcprov 1.81（与 QCC 一致），验签直接用 QCC 的 `DilithiumVerifier`；classpath 上没有 BC 时自动改用 JDK 24+ 原生实现。
 
----
+## 运行
 
-## 1. 一句话骨架
-
-整个系统只有一个入口方法,其余全是它的零件:
-
-```
-                     链上引导协议(6116 字节 JSON)
-                              │
-                     ProtocolLoader 校验 hash
-                              ▼
-                        ProtocolRoot
-                   (参数 + 操作分发表 + 检查顺序)
-                              │
-   OpInput ──────────────────►│
- (一条操作)                    ▼
-                    NameStateMachine.apply()   ← 唯一入口,约 20 行
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-         resultCode      StateDelta        execHash
-              │               │               │
-              │               ▼               ▼
-              │          NameState       链式推进
-              │         (四张 TreeMap)   (每条都推,含被拒的)
-              ▼
-        OpLogStore(日志,权威)
+```bash
+./gradlew selfTest      # 全部自测（含两节点模拟）
+./gradlew simulate      # 只跑两节点本地模拟
+# 或不用 Gradle（工程根目录）：
+javac -encoding UTF-8 -d out $(find src -name '*.java')
+java -Dstdout.encoding=UTF-8 -cp out qcc.name.AllTests
 ```
 
-**日志是权威,状态是派生的。** 崩溃恢复 = 重放日志。不存在"状态与日志不一致"这一整类问题。
+必须在工程根目录运行：会读取 `qcc-meta-v1.0.0.json`、`qcc-name-v1.0.0.json`、`testdata/`。
 
----
+## 部署（v1.0 公网测试，P2P）
 
-## 2. 一条 register 走完全程
+一台服务器一个节点，入口 `qcc.name.node.NodeMain`，无启动参数，只读属性文件。必填 3 项：
 
-```
-1. 客户端   签名 (opCode=1, blockHeight=H, payload=[name, address])
-              签名用 ML-DSA-87,4627 字节
-
-2. API 层   收请求 → 校验格式 → 批量验签(并行,核心之外)
-              → 签名本体存 SignatureVault,只留 sigHash(32 字节)
-              → 从 ChainView 取 PledgeFact
-              → 打上 admitHeight = 当前链高度
-
-3. 日志     OpLogStore.append(envelope) → 分配 seq
-
-4. 核心     NameStateMachine.apply(OpInput)
-              ├ opCode 已知?          否 → 43
-              ├ sigValid?              否 → 40
-              ├ admitHeight - blockHeight 在窗口内?  否 → 41
-              ├ 签名者 == 所需角色?    否 → 42
-              ├ 协议 ops[0].checks 依次跑:
-              │    nameFormat → nameConfusableFree → nameUnique
-              │    → addressUnique → pledge
-              │  第一个失败即决定 resultCode
-              └ 全过 → RegisterHandler.apply() 产出 StateDelta
-
-5. 状态     NameState.apply(delta)          三张表更新
-6. 哈希     ExecHasher.advance(...)         execHash 推进一步
-7. 收据     ReceiptSigner 签回 (seq, opHash, epochId, admitHeight)   [待做]
-8. 封口     EpochBuilder 攒够 → 算 Merkle → 上链锚定               [待做]
+```properties
+nodeId=本机QCC地址          # 配置文件优先，否则代码 DEFAULT_NODE_ID
+clusterKey=64位hex          # 节点间 AES-256-GCM，所有节点相同，不进仓库
+seeds=IP:端口,...           # 能连上任意一台即可；第一台（创世）留空
 ```
 
----
+其余（port / advertiseIp / role / chains / protocolHash …）均有默认值，见 `qccname.properties.example`、`deploy/DEPLOY.md`。
 
-## 3. 每个类一句话
+### 集群（`node/Cluster` + `NameNode`）
 
-### `qcc.name.codec` —— 字节层,保证确定性
-
-| 类 | 职责 |
+| | 说明 |
 |---|---|
-| `Sha3` | 全项目唯一的 SHA3-256 入口。多段哈希、快速 hex、严格解码(非法 hex 抛异常不补零) |
-| `QccCanonicalWriter` | 规范二进制写入。null≠空串、map 按 UTF-8 字节序排、变长带 uint32-be 长度前缀 |
-| `QccCanonicalReader` | 对称读取。全部越界抛异常,有 MAX_FIELD 上界,`finish()` 要求字节被完全消费 |
-| `CodecSelfTest` | 一致性向量第一批(20 项) |
+| 本机地址 | `LocalAddressResolver`：网卡上的公网 IPv4 优先，否则全局 IPv6；或 `advertiseIp` 指定 |
+| 角色 | 公网 IPv4 → 核心（确认、投票、接班）；只有 IPv6 / NAT → 冗余（只同步、查询） |
+| 加入 | 联系任意 seed 取得成员表 → hello 主节点 → 主节点登记（核心按加入顺序）并广播 |
+| 成员表 | 持久化 `数据目录/cluster.json`；(term, ver) 更新者胜出；IP 为软状态，随心跳更新（IPv6 轮换不影响） |
+| 心跳 | 主节点每 10 秒 announce 全体；其他节点每 10 秒 hello 主节点：上报地址、追平、分叉检测 |
+| 确认数 | 核心 ≥3：过半（4 核心需 2 个 ACK）；核心 <3：min(minBackupAcks, 核心数-1) |
+| 接班 | 核心 ≥3：主节点失联 30 秒 + 顺位×10 秒 → 选举，过半同意即当选；核心 <3：手动 promote（防脑裂） |
+| 投票条件 | 投票方自己也 ≥15 秒联系不上主节点；本任期未投过票；候选人 (lastTerm, seq) 不落后 |
+| 旧主恢复 | 启动探测 / 收到更高 term → 退位；本地有未确认帧 → 自动清空、全量重新同步 |
+| 创世安全 | seeds 为空且本地无数据才创世；配了 seeds 连不上只重试，永不自封为主 |
 
-### `qcc.name.protocol` —— 引导层,应用边界
+### 节点间加密（`crypto/ClusterCipher`）
 
-| 类 | 职责 |
+```
+MAGIC "QNSC" | ver 1 | ts u64 | nonce 12 | AES-256-GCM(ciphertext + tag16)
+AAD = MAGIC | ver | ts | nonce | path [| 请求 nonce（仅响应）]
+```
+
+- 请求：|now − ts| ≤ 60s，nonce 窗口内不得重复（防重放）；path 进 AAD（不能跨接口挪用）
+- 响应：AAD 绑定请求 nonce（不能冒充别的请求的响应）
+- 鉴权 = 持有 clusterKey，不依赖 IP 白名单与 HTTPS；解密失败统一 403
+- GCM 已是认证加密，不需要再叠加 HMAC（与 QccInternalFrame 的区别）；密钥从配置读取，不写在源码里
+
+### 多链节点（`chain/MultiChainView`）
+
+- 查询从最近成功的节点开始依次尝试，失败节点暂停 30 秒；全部失败 → ChainUnavailable，写入返回 UNAVAILABLE（不误判）
+- 公钥查不到时再问另一个节点（新地址可能尚未同步到落后节点）
+- 回收（expire）前要求 ≥2 个链节点回答"质押不存在"且没有节点回答"存在"
+
+### 内存（实测，JDK 25，SerialGC）
+
+| 项 | 数值 |
 |---|---|
-| `StrictJson` | 严格 JSON 解析。拒绝重复 key / 小数 / null / 注释 / 尾随逗号。**不用 fastjson2** |
-| `ProtocolRoot` | 协议的可执行形态。参数、操作分发表、检查顺序、resultCode 全从这里来 |
-| `ProtocolLoader` | 按硬编码的 `PROTOCOL_HASH` 从链上取回并校验。Fetcher 可注入,验证者可离线加载 |
+| 每个名称常驻堆 | ≈ 0.8 KB（状态 + 幂等索引，2 万名称重放实测 790 B） |
+| 每帧磁盘 | ≈ 4.9 KB（ML-DSA-87 签名 4627 B 占绝大部分） |
+| 进程 RSS（-Xmx96m，300 名称，3 节点联调） | ≈ 80 MB |
 
-### `qcc.name.core` —— 确定性核心,**禁 IO / 禁墙钟 / 禁并发 / 禁哈希容器迭代**
-
-| 类 | 职责 |
+| VPS | 建议 |
 |---|---|
-| `NameStateMachine` | 唯一入口。`apply(OpInput) → OpResult` |
-| `NameState` | 四张 TreeMap:forward / reverse / tombstone / confusable |
-| `ForwardRecord` | 一个名字的状态:addresses / owner / incarnation / seq。不可变 |
-| `Tombstone` | 释放记录:下一代世代号 + 释放高度。用于冷却期与防接管 |
-| `StateDelta` | 一条操作的变更集。编码前排序,与 emit 顺序无关 |
-| `OpInput` | 一条操作的完整输入 = 写进日志的那条记录 |
-| `OpResult` | resultCode + delta + 推进后的 execHash |
-| `ExecHasher` | execHash 逐条推进 |
-| `NameValidator` | 字符集、连字符、同形字归一化。**参数全部来自协议,无字面量** |
-| `OpHandlers` | 五个操作的实现 + 十项检查的实现 |
-| `PledgeFact` | 从链上取回的质押事实,作为输入喂进来 |
-| `CoreSelfTest` | 一致性向量第三批(33 项),驱动真协议 |
+| 256 MB | 可用。默认 `-Xmx128m`，约 8 万名称以内；系统要精简（不跑其他服务），建议加 512 MB swap |
+| 512 MB | 推荐。`-Xmx256m`，约 25 万名称 |
 
-### `qcc.name.state` —— 持久层
+磁盘：10 万帧 ≈ 0.5 GB。
 
-| 类 | 职责 |
+开发工具：`qcc.name.dev.DevClient`（importkey / pledge / register / unregister / verify / revoke / status，末尾 `@序号` 指定节点，读同一份配置）；
+不连测试链时运行 `qcc.name.dev.DevChainServer`，配置 `chains=http://127.0.0.1:9190`。
+
+| 接口 | 说明 |
 |---|---|
-| `OpLogStore` | 有序只追加日志。段式 128MB、CRC32、崩溃残尾截断、段间隙拒启动、显式 fsync |
-| `StateSelfTest` | 一致性向量第二批(26 项) |
+| `POST /v1/register` | `{"chain","address","name","timestamp","credentialHash","sig"}`，sig 为 hex |
+| `POST /v1/unregister` | `{"chain","address","name","timestamp","regSeq","sig"}` |
+| `GET /v1/verify?name=&address=` | `match` true/false + 原因 `status`（MATCH / MISMATCH / NOT_FOUND / REVOKED / UNVERIFIED）+ L1 证据。地址匹配时查链确认授权质押仍有效，撤销即 false |
+| `GET /v1/pubkey?address=` | 链上公钥 |
+| `GET /v1/status` | term / seq / execHash / 角色 |
+| `POST /internal/*` | 节点间接口（frame / pull / heartbeat / submit / cluster），AES-256-GCM 密文，解密失败 403 |
+| `POST /admin/promote[?term=N]` | 手动接班（核心 <3 时用），只允许本机 |
+| `POST /admin/rejoin?peer=节点地址` | 清空本地数据，全量重新同步（分叉时自动执行），只允许本机 |
+| `POST /admin/remove?id=节点地址` | 主节点上移除永久下线的成员，只允许本机 |
 
-### 待做
+限流：`/v1/*` 按来源 IP 每分钟写 60、读 1200（`NameHttpServer.WRITE_PER_MIN / READ_PER_MIN`），节点 IP 与回环不限，超限 429。
 
-| 类 | 职责 |
-|---|---|
-| `SparseMerkle` / `MerkleProof` | stateRoot 与单条包含/不存在证明 |
-| `ChainView` + 两个实现 | 质押事实、公钥、当前高度 |
-| `EpochBuilder` / `AnchorPublisher` / `ReceiptSigner` | 封口、上链、收据 |
-| `ClientApi` / `SystemApi` | 两类 HTTP 接口 |
-| `Replayer` / `VerifyCli` | 独立验证器 —— **整个试点的意义所在** |
+服务端按请求字段重建签名字符串再验签，客户端（Flutter）只需拼字符串、签名、发 JSON。
 
----
+## 引导协议
 
-## 4. 四条设计约束(改代码时不要破坏)
-
-**① 核心不做 IO。** 质押、公钥、高度全部作为 `OpInput` 的一部分传进去。
-理由:重放者必须能在离线状态下得到完全相同的结果。
-
-**② 时间的唯一来源是区块高度。** 核心里不允许出现 `System.currentTimeMillis()`。
-墙钟不可重放。
-
-**③ 核心里没有哈希容器的迭代。** 全部 TreeMap + 显式 `compareUtf8`。
-`HashMap` 的迭代顺序跨 JVM、跨语言都不同,是分歧的头号来源。
-
-**④ 核心里没有数字字面量。** 所有参数从 `ProtocolRoot` 注入。
-参数写死在代码里,链上那份协议就只是文档了。
-
-这四条建议用 ArchUnit 在 CI 里强制,不要靠自觉。
-
----
-
-## 5. 命名:哪些能改,哪些改不了
-
-### 随时可改(不进 hash)
-
-| 现名 | 说明 |
-|---|---|
-| `qcc.name.*` | 包名 |
-| 所有**类名** | `OpLogStore` / `NameStateMachine` / `ExecHasher` … |
-| 所有**方法名、字段名** | Java 层的东西一律自由 |
-| 文件名、目录名 | `oplog_N.qlog` 等 |
-
-### 必须在协议 v1.0.1 之前定死(进 hash)
-
-| 项 | 现值 | 为什么冻结 |
+| 文件 | 状态 | hash |
 |---|---|---|
-| 操作名 | `register` `bindAddr` `unbindAddr` `transferOwner` `release` | 协议 `ops[].name`,分发表按它匹配 |
-| 操作码 | 1 2 3 4 5 | 进 execHash 前像 |
-| 检查名 | `nameFormat` `nameConfusableFree` `nameUnique` `addressUnique` `pledge` `maxAddresses` `targetBound` `targetNotOwner` `isLastAddress` `confirmFlag` | 协议 `ops[].checks`,顺序决定 resultCode |
-| resultCode | 0/10-13/20-25/30-31/40-43 | 进 execHash |
-| StateDelta 类型码 | 1=putForward 2=delForward 3=putReverse 4=delReverse 5=putTombstone 6=putConfusable 7=delConfusable | 进 delta 编码 |
-| `ForwardRecord` 字段**顺序** | addresses, owner, incarnation, seq | 进编码 |
-| `Tombstone` 字段**顺序** | nextIncarnation, releasedHeight, seq | 进编码 |
-| `OpInput` 日志字段**顺序** | opCode, blockHeight, admitHeight, payload, signers, sigHash | 进日志与 execHash |
-| 协议字段名 | `execHash` `stateRoot` `epoch` `params` … | 协议文档本身 |
+| `qcc-meta-v1.0.0.json` | 已上链（tx `09ea70e0…`，高度 16965） | `a25375d6…46fdf` |
+| `qcc-name-v1.0.0.json` | **未上链**，本地调试 | 运行时打印 |
 
-**判断方法很简单:这个字符串或数字会不会被 `QccCanonicalWriter` 写出去?** 会 → 冻结;不会 → 随便改。
+上链后把交易 hash 与协议 hash 填进 `ProtocolLoader.PROTOCOL_TX_HASH / PROTOCOL_HASH`。
+链上 payload 是 Java 有符号字节数组，还原时必须 `x & 0xFF`。
 
----
+## 包结构
 
-## 6. 协议 v1.0.1 待补清单
+| 包 | 职责 |
+|---|---|
+| `codec` | SHA3-256、规范二进制读写（沿用） |
+| `protocol` | `StrictJson` 严格解析；`NameProtocol` 按 qcc-meta/1 校验结构并解析参数；`ProtocolLoader` 校验 hash、从链上取回 |
+| `op` | `NameOp` 抽象类 + `RegisterOp` / `UnregisterOp` / `ExpireOp`：签名字符串（`QNS1\|…`）与二进制形态 |
+| `crypto` | `MlDsa87`（BC / JDK 原生自动选择）；`ClusterCipher` 节点间 AES-256-GCM |
+| `chain` | `ChainView`；`HttpChainView` 单个链节点；`MultiChainView` 多节点故障切换；`MockChainView` 本地模拟 |
+| `core` | **确定性核心**：`NameMachine`（按协议顺序跑检查、apply、execHash 链）、`NameState`、`NameRules` |
+| `frame` | `NameFrame` 同步帧（约 200 字节）；`FrameCodec` 线格式 `QNSF\|TYPE\|len\|payload` |
+| `store` | `FrameStore` = 帧日志 + 签名库（两份 `OpLogStore`，seq 对齐） |
+| `node` | `NameNode` 主/备/冗余逻辑；`Transport` 接口 + `InMemoryTransport`；`NodeMain` 启动（日志、10 秒同步定时器） |
+| `verify` | `ResultVerifier`（L1 证据核对，任何人可用）；`Replayer`（离线重放） |
+| `sim` | `LocalSimulation` 两节点端到端模拟 |
+| `http` | 对外接口、限流、`HttpTransport`；`NetSelfTest`（加密 / 冗余节点 / 多链节点，真实 HTTP） |
 
-跑通实现之后暴露出来的,**都必须在第一批真实注册之前发**:
-
-1. `namespace.incarnation` —— 世代号现在只在实现里
-2. `state.confusable` —— 同形字索引是第四张表,进 Merkle 叶子
-3. 同形字**归一化算法** —— 长键优先、单次左到右、输出不重扫
-4. `execHash.perOp` 的**分帧规则** —— 现在只写了 `||`,没说变长字段怎么分界
-5. `admitHeight` 字段 —— 防重放检查的确定性来源
-6. 通用前置检查的**顺序** —— opCode → sigValid → replayWindow → authorized
-7. `nameUnique` 里冷却期用 `blockHeight` 判定(而不是当前高度)
-8. 质押事实的取得方式(见下,取决于历史查询的结论)
-
----
-
-## 7. 部署隔离
+## 写入流程（主节点）
 
 ```
-端口   HTTP 9180 / 内部 9181     启动时若命中 QCC 已占端口表则拒绝启动
-       QCC 已占:9080 9333 9334 9443 9950 9951 9952 9953 9954
-
-目录   ~/qccname/                独立于 ~/qccchain
-         oplog/                  操作日志段
-         sigvault/               签名本体
-         epoch/                  epoch header
-         config/
-
-进程   独立 JVM。绝不调用 QccPath.init()
-       同机部署时设独立磁盘卷或目录配额,注册高峰不得影响超级节点出块
+入口：格式 → chain → ±5 分钟时间窗 → 幂等(opHash) → 链上公钥验签
+链上事实：chainTime；register 查授权质押 (address, qccio, credentialHash)
+核心 evaluate（检查顺序由协议 ops[].checks 决定）
+  register   tsMonotonic → tagOpen → pledgeMet → labelFormat → notReserved
+             → notConfusable → nameFree → cooldownPassed → addressFree
+  unregister tsMonotonic → nameExists → holderMatches → regSeqMatches
+  expire     nameExists → holderMatches → credentialMatches → pledgeGone
+撞上 13/20 → 查原持有者质押，已撤销则先写 expire 帧回收
+不在 loggedRejections 中的拒绝 → 入口丢弃（不进日志）
+构帧 → apply → 落盘 → 推送备节点 → ACK ≥ minBackupAcks 才算 OK，否则 PENDING
 ```
 
----
+质押检查排在业务检查之前：日志里每一条拒绝帧背后都锁着质押，无成本刷日志不可行。
 
-## 8. 一个待决问题
+## 状态
 
-**质押查询没有历史高度维度。** `PledgeContext` 转发给 `BALANCE_query_Pledge` 的参数里没有 height,所以验证者无法查"注册发生时的质押状态"。
+```
+records    name          → address | credentialHash | regSeq | regTime
+holders    tag|address   → name            （每个地址每个 tag 一个名称）
+lastTs     address       → 最近一条入日志的用户操作 timestamp（防重放，删除后保留）
+tombs      name          → releasedTime | regSeq   （冷却期 30 天，任何人含原地址）
+confusable tag|normLabel → name
+```
 
-三个方向:
+## 帧与 execHash
 
-| | 做法 | 验证强度 | 成本 |
-|---|---|---|---|
-| a | 链上加历史状态查询 | 最强 | 改主链 |
-| b | leader 把 `PledgeFact` 连同 `admitHeight` 写进操作日志,验证者事后抽查 | 中,偏差**可发现** | 低 |
-| c | 用"当前是否仍有效"近似 | 弱 | 最低 |
+```
+term u32 | seq u64 | chainTime u64 | result u8 | bytes(op) | hash32(sigHash)
+| bool(pledgeExists) | str(assetId) | u64(amount) | hash32(execHash)
 
-建议 **b**:验证者虽然不能重算当时的质押,但能拿日志里的记录去链上核对 leader 有没有伪造,而且这条记录被 execHash 覆盖,改不了。
+execHash  = SHA3-256("QNS-EXEC" || prevExecHash || execHash 之前的全部字节)
+execHash0 = SHA3-256("QNS-GENESIS" || protocolHash || utf8(instanceId))
+```
+
+## 待确认的假设
+
+1. ~~ML-DSA 签名方式~~：已由 QCC `DilithiumVerifier` 确认 —— 纯 ML-DSA-87、空 context、签 UTF-8 原文（与 Flutter liboqs 一致）。
+2. **签名分隔符** `|`（`NameOp.SIGN_SEP`）是否与 QccBaseData.SIGN_SEP 统一。
+3. **chainTime**：暂无"最新容器时间戳"接口，`HttpChainView` 暂用单调墙钟。
+4. **addresskey 响应末尾 8 字节**的含义（解析时忽略）。
+5. **地址 checksum**：未校验，链上取不到公钥即拒绝。
+6. 首发 tag：协议中开放了 `qcc`、`osn`、`com`，上链前可删减。
+
+## 尚未实现（下一步）
+
+- 节点钱包签名（钱包托管完成后）：nodeId 认证、verify 响应签名
+- 分叉恢复目前为全量重新同步（未做公共前缀截断）

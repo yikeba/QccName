@@ -4,6 +4,7 @@ import qcc.name.Check;
 import qcc.name.chain.MockChainView;
 import qcc.name.core.ResultCode;
 import qcc.name.crypto.MlDsa87;
+import qcc.name.crypto.QccAddress;
 import qcc.name.node.*;
 import qcc.name.op.NameOp;
 import qcc.name.op.RegisterOp;
@@ -31,6 +32,8 @@ public final class LocalSimulation {
 
     static final long QCC = 1_000_000_000L;
     static final long DAY = 86_400_000L;
+    /** 模拟的协议发布者（= 链上协议交易的 from）。 */
+    static final String PUBLISHER = "QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1";
 
     // ── 模拟用户 ──────────────────────────────────────────────────
     static final class User {
@@ -56,7 +59,7 @@ public final class LocalSimulation {
         root = args.length > 0 ? Path.of(args[0]) : Files.createTempDirectory("qccname-sim");
         FrameStore.deleteTree(root);
         Files.createDirectories(root);
-        p = ProtocolLoader.loadFile(Path.of("qcc-name-v1.0.0.json"), null);
+        p = ProtocolLoader.loadFile(Path.of("testdata/qcc-name-test-v1.0.0.json"), null).withReservedPublisher(PUBLISHER);
         say("协议 " + p + "  （本地调试，未上链）");
         say("数据目录 " + root + "  签名实现 " + MlDsa87.source());
 
@@ -74,7 +77,27 @@ public final class LocalSimulation {
         c.ck(n1.maxSeq() == 1 && n1.execHex().equals(n0.execHex()), "备节点已同步 seq=1，execHash 一致");
         expect(submit(n0, bob, reg(bob, "alice.qcc", hb)), SubmitResult.Status.REJECTED, ResultCode.NAME_TAKEN, "bob 抢注 alice.qcc（拒绝也写入日志）");
         expect(submit(n0, bob, reg(bob, "a1ice.qcc", hb)), SubmitResult.Status.REJECTED, ResultCode.CONFUSABLE, "bob 注册形近名 a1ice.qcc");
-        expect(submit(n0, bob, reg(bob, "admin.qcc", hb)), SubmitResult.Status.REJECTED, ResultCode.RESERVED, "bob 注册保留名 admin.qcc");
+        {   // Reserved：发布者在链上发布第 1 版（admin.qcc → dave），主节点写 reserve 帧，备节点同步
+            String tx = "b1".repeat(32);
+            byte[] doc = ("{\n  \"protocol\": \"qcc-name-reserved\",\n  \"version\": \"1.0.0\",\n  \"nameProtocolHash\": \"" + p.protocolHash
+                    + "\",\n  \"seq\": 1,\n  \"prevTx\": \"\",\n  \"names\": {\"admin.qcc\": \"" + dave.address + "\"},\n  \"release\": []\n}\n")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            chain.putTx(new qcc.name.chain.ChainTx("b0".repeat(32), p.chain, bob.address, "QCCData", 499, chain.now(), doc));
+            SubmitResult bad = n0.submitReserve(chain.tx("b0".repeat(32)));
+            show("bob（非发布者）发布 Reserved", bad);
+            c.ck(bad.status() == SubmitResult.Status.DROPPED && bad.resultCode() == ResultCode.RESERVE_PUBLISHER, "非发布者 → 入口丢弃（50）");
+            chain.putTx(new qcc.name.chain.ChainTx(tx, p.chain, PUBLISHER, "QCCData", 500, chain.now(), doc));
+            SubmitResult rs = n0.submitReserve(chain.tx(tx));
+            show("发布者的 Reserved 第 1 版", rs);
+            c.ck(rs.status() == SubmitResult.Status.OK, "Reserved 第 1 版生效（admin.qcc → dave）");
+            c.ck(n1.execHex().equals(n0.execHex()) && n1.reservedApplied(tx), "备节点同步 reserve 帧，execHash 一致");
+            c.ck(n0.submitReserve(chain.tx(tx)).status() == SubmitResult.Status.OK && n0.maxSeq() == n1.maxSeq(), "重复提交同一版：幂等");
+            expect(submit(n0, bob, reg(bob, "admin.qcc", hb)), SubmitResult.Status.REJECTED, ResultCode.RESERVED, "bob 注册保留名 admin.qcc");
+            VerifyResult rv = n1.verify("admin.qcc", dave.address);
+            c.ck(rv.match() && rv.reserved() && tx.equals(rv.reservedTx()), "verify(admin.qcc, dave) @name1 → MATCH（按 Reserved 表）");
+            c.ck(!n1.verify("admin.qcc", bob.address).match(), "verify(admin.qcc, bob) → MISMATCH");
+            c.ck(n1.namesOf(dave.address).names().stream().anyMatch(h -> h.reserved() && h.name().equals("admin.qcc")), "反查 dave → 含保留名 admin.qcc");
+        }
         long before = n0.maxSeq();
         expect(submit(n0, carol, reg(carol, "carol.qcc", hc)), SubmitResult.Status.DROPPED, ResultCode.PLEDGE_NOT_MET, "carol 只质押 0.5 QCC");
         c.ck(n0.maxSeq() == before, "质押不满足：入口丢弃，不进日志");
@@ -104,6 +127,8 @@ public final class LocalSimulation {
         expect(submit(n0, dave, reg(dave, "dave.qcc", hd)), SubmitResult.Status.PENDING, ResultCode.OK, "name1 离线时 dave 注册（主节点已落盘，确认不足）");
         net.setDown("name1", false);
         c.ck(n1.maxSeq() < n0.maxSeq(), "name1 恢复在线，落后 " + (n0.maxSeq() - n1.maxSeq()) + " 帧");
+        n0.syncTick();
+        say("主节点心跳（announce，每 10 秒）联系上 name1，解除暂停");
         expect(submit(n0, erin, reg(erin, "erin.qcc", he)), SubmitResult.Status.OK, ResultCode.OK, "erin 注册：推送时 name1 发现缺口，自动拉取补齐");
         c.ck(n1.maxSeq() == n0.maxSeq() && n1.execHex().equals(n0.execHex()), "name1 追平，execHash 一致");
         expect(submit(n0, dave, reg(dave, "dave.qcc", hd)), SubmitResult.Status.REJECTED, ResultCode.NAME_TAKEN,
@@ -127,7 +152,9 @@ public final class LocalSimulation {
         step("5. 质押撤销 → 惰性回收（expire）");
         chain.revoke(frank.address, p.pledgeTag, hf);
         say("frank 的授权方在链上撤销了质押");
-        c.ck(!ResultVerifier.check(n0.verify("alice.qcc", frank.address), p, chain).ok(), "此时任何应用核对 alice.qcc 都会发现质押已不存在");
+        VerifyResult rv = n1.verify("alice.qcc", frank.address);
+        c.ck(!rv.match() && rv.status() == VerifyResult.Status.REVOKED, "撤销后 verify → match=false（status=REVOKED，节点记录尚未回收）");
+        c.ck(!ResultVerifier.check(rv, p, chain).ok(), "L1 独立核对同样不通过");
         long s0 = n0.maxSeq();
         expect(submit(n0, grace, reg(grace, "alice.qcc", hg)), SubmitResult.Status.REJECTED, ResultCode.COOLDOWN,
                 "grace 注册 alice.qcc（撞上 frank 的失效名称）");
@@ -144,9 +171,10 @@ public final class LocalSimulation {
         show("name0 宕机，向 name1 提交（透传失败）", un0);
         c.ck(un0.status() == SubmitResult.Status.UNAVAILABLE, "主节点不可达 → UNAVAILABLE");
         n1.promote(1);
-        say("name1.promote(1)：order[1 mod 2] = name1 接任主节点");
+        say("name1.promote(1)：手动接班（2 个核心不自动选举），name1 成为主节点");
         expect(submit(n1, bob, reg(bob, "bob.osn", hb)), SubmitResult.Status.PENDING, ResultCode.OK, "name1 作为新主受理 bob.osn（name0 仍离线）");
 
+        Thread.sleep(300);                                              // 等 name1 对离线 name0 的后台试推结束（失败）
         net.setDown("name0", false);
         say("name0 网络恢复，但它还不知道已被接班（仍认为 term=0、自己是主）");
         RegisterOp strayOp = reg(dave, "dave.osn", hd);
@@ -161,6 +189,8 @@ public final class LocalSimulation {
         c.ck(n0.rejoinFrom("name1"), "全量同步完成");
         c.ck(n0.term() == 1 && !n0.isPrimary() && n0.execHex().equals(n1.execHex()), "name0 成为备节点，term=1，execHash 与新主一致");
         c.ck(n0.verify("dave.osn", dave.address).status() == VerifyResult.Status.NOT_FOUND, "旧主那条未确认的帧已被丢弃");
+        n1.syncTick();
+        say("新主 name1 心跳（announce）联系上 name0，解除暂停");
         expect(submit(n0, dave, reg(dave, "dave.osn", hd)), SubmitResult.Status.OK, ResultCode.OK, "dave 重新提交（经 name0 透传到新主 name1）");
 
         step("7. 重启重放与离线核对");
@@ -199,10 +229,7 @@ public final class LocalSimulation {
 
     private User user(String label) {
         MlDsa87.Keys kp = MlDsa87.generate();
-        String alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-        StringBuilder sb = new StringBuilder("Q");
-        for (int i = 0; i < 33; i++) sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
-        User u = new User(label, sb.toString(), kp);
+        User u = new User(label, QccAddress.derive(kp.pub()), kp);     // 真实地址：由公钥推导
         chain.putPubkey(u.address, kp.pub());
         return u;
     }

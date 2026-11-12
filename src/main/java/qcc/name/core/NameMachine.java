@@ -42,8 +42,10 @@ public final class NameMachine {
     static {
         CHECKS.put("tsMonotonic", (m, in) ->
                 in.op().timestamp > m.state.lastTs(in.op().address) ? ResultCode.OK : ResultCode.TS_NOT_MONOTONIC);
-        CHECKS.put("tagOpen", (m, in) ->
-                m.p.tag(in.op().tag()) != null ? ResultCode.OK : ResultCode.TAG_NOT_OPEN);
+        CHECKS.put("tagOpen", (m, in) -> {                             // 已声明且 registration = open
+            TagPolicy t = m.p.tag(in.op().tag());
+            return t != null && t.open() ? ResultCode.OK : ResultCode.TAG_NOT_OPEN;
+        });
         CHECKS.put("pledgeMet", (m, in) -> {
             TagPolicy t = m.p.tag(in.op().tag());
             return t != null && t.pledgeMet(in.pledgeExists(), in.pledgeAssetId(), in.pledgeAmount())

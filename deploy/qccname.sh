@@ -4,7 +4,9 @@
 #
 #   目录结构（脚本所在目录即应用目录）：
 #     qccname.sh  qccname.jar  qccname.properties  qcc-name-public-v1.0.0.json
-#   数据与日志：~/qccname/{nodeId}/   ~/qccname/logs/
+#   数据与日志：~/qccname/{instance}/{nodeId}/   ~/qccname/{instance}/logs/
+#   同机多实例：每个实例一个应用目录（/opt/qccname-qccio、/opt/qccname-osnsg），各放一份本脚本
+#   完整运维手册：docs/OPERATIONS.md
 #
 #   用法：./qccname.sh <命令>
 #     start    环境检查 → 防火墙放行 → 后台启动，显示本次启动日志

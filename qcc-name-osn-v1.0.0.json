@@ -8,7 +8,7 @@
   "docs": {
     "note": "Informative text for humans. Machine fields are normative. References of the form {path} are resolved against this document by display tools.",
     "zh": {
-      "overview": "QCC-Namespace 为 ML-DSA-87 地址提供一个简单可读的账户名,形如 名字.tag,例如 alice.qcc。它只回答一个问题:这个名字是否对应这个地址。鉴权由应用服务器自己完成,namespace 不做 KYC,不封禁账户。本协议是企业级 namespace(新加坡 OSN):tag 不开放自助注册,所有名字由协议发布者在 Reserved 中分配给内部成员,外部地址无法注册。账户只能注册或删除,不能编辑、不能转让;同一个地址在同一个 tag 下只能拥有一个名字。",
+      "overview": "QCC-Namespace 为 ML-DSA-87 地址提供一个简单可读的账户名,形如 名字.tag,例如 alice.qcc。它只回答一个问题:这个名字是否对应这个地址。鉴权由应用服务器自己完成,namespace 不做 KYC,不封禁账户。本协议是企业级 namespace(新加坡 OSN):tag 开放注册,企业的管理名(admin、cto 等)由协议发布者在 Reserved 中指定,优先于注册信息。namespace 只回答名字与地址是否对应;谁能使用企业的应用(邮箱、内部系统、账户),由各应用自己的白名单决定。账户只能注册或删除,不能编辑、不能转让;同一个地址在同一个 tag 下只能拥有一个名字。",
       "reserved": "保留名(Reserved)是协议发布者的管理边界,用于企业级 namespace 的内部管理名称(如 admin、support、security)。只有发布本协议的那个地址(本协议所在 QCC 交易的 from)可以发布 Reserved 文档,文档以 QCCData 交易上链,每一版都是完整的表,seq 从 1 起逐版加 1,并用 prevTx 指向上一版的交易哈希。Reserved 高于注册信息:名字在当前生效的 Reserved 中,就按 Reserved 给出的地址回答,注册表不再参与;Reserved 中的名字及与之形近的名字都不能注册;已注册的同名名字在 Reserved 生效时被移除并进入冷却期。地址为空串表示保留但暂不绑定(查询结果为不存在)。从表中去掉一个名字必须同时写进 release,才重新开放注册。每一版在其交易所在的区块高度生效,高度必须严格递增;节点之间通过日志中的 reserve 操作保持一致,不依赖各自读取链的时间。没有发布 Reserved 时,registration 为 open 的 tag 完全开放。每个名称 tag 声明 registration:open 表示开放注册,任何人满足质押即可注册,先到先得;reserved 表示不开放自助注册,该 tag 下的名字只能由协议发布者在 Reserved 中分配。发布地址的安全(例如多签)属于链上账户的安全,不在本协议之内。",
       "trustRoot": "应用只硬编码两个常量:本协议在 QCC 公链上的交易哈希,以及本协议原始字节的 SHA3-256。namespace 节点启动时取回本协议并校验哈希,所有运行参数都从这里读取。",
       "boundary": "本协议中的参数就是节点行为的边界:没有默认值,没有未声明的操作,检查顺序由 ops 字段决定。节点遇到不认识的字段或缺少字段时拒绝启动。运营方无法通过修改代码常量改变规则。",
@@ -18,7 +18,7 @@
       "limits": "L1 只能证明每一个返回的结果是真实的,不能证明运营方没有拒绝或延迟某个请求,也不能证明名称的先到先得顺序。没有锚定上链时,运营方理论上可以整体改写历史。节点在规则之外的行为(例如记录访问信息)无法通过协议证明,只能依靠开源与审计。"
     },
     "en": {
-      "overview": "QCC-Namespace gives ML-DSA-87 addresses a simple readable account name of the form name.tag, for example alice.qcc. It answers one question only: does this name correspond to this address. Authentication is done by the application server itself; namespace performs no KYC and bans no accounts. This protocol is an enterprise namespace (OSN, Singapore): its tags are closed to self-registration; every name is assigned to internal members by the protocol publisher in Reserved, and outside addresses cannot register. An account can only be registered or deleted, never edited or transferred; one address can hold only one name under each tag.",
+      "overview": "QCC-Namespace gives ML-DSA-87 addresses a simple readable account name of the form name.tag, for example alice.qcc. It answers one question only: does this name correspond to this address. Authentication is done by the application server itself; namespace performs no KYC and bans no accounts. This protocol is an enterprise namespace (OSN, Singapore): its tags are open for registration; the enterprise's management names (admin, cto and so on) are assigned by the protocol publisher in Reserved and take precedence over registrations. Namespace only answers whether a name corresponds to an address; who may use the enterprise's applications (mail, internal systems, accounts) is decided by each application's own whitelist. An account can only be registered or deleted, never edited or transferred; one address can hold only one name under each tag.",
       "reserved": "Reserved names are the management boundary of the protocol publisher, intended for the internal management names of an enterprise namespace (such as admin, support, security). Only the address that published this protocol (the from of the QCC transaction carrying it) may publish a Reserved document. The document is published as a QCCData transaction; every version is a complete table, seq starts at 1 and increases by one per version, and prevTx points to the transaction hash of the previous version. Reserved takes precedence over registrations: a name present in the effective Reserved is answered with the address Reserved gives, and the registry is not consulted; names in Reserved and names confusable with them cannot be registered; an existing registration of the same name is removed and enters cooldown when the Reserved version takes effect. An empty address means reserved but currently unbound (lookups report not found). Removing a name from the table requires listing it in release, which reopens it for registration. Each version takes effect at the block height of its transaction, and heights must strictly increase; nodes stay consistent through the reserve operation in the log, independent of when each node reads the chain. Without any Reserved document every tag whose registration is open is fully open. Each name tag declares registration: open means anyone who meets the pledge may register, first come first served; reserved means no self-registration, and names under that tag can only be assigned by the protocol publisher in Reserved. The security of the publisher address (for example multi-signature) is a matter of the chain account and is outside this protocol.",
       "trustRoot": "An application hardcodes exactly two constants: the QCC chain transaction hash of this protocol and the SHA3-256 of its raw bytes. A namespace node fetches this protocol at startup, checks the hash, and reads every operating parameter from it.",
       "boundary": "The parameters in this protocol are the boundary of node behaviour: no defaults, no undeclared operations, and check order is decided by the ops field. A node refuses to start on an unknown or missing field. An operator cannot change the rules by editing a constant in code.",
@@ -72,12 +72,12 @@
     "osn": {
       "assetId": "QCC",
       "minAmount": 1000000000,
-      "registration": "reserved"
+      "registration": "open"
     },
     "osnsg": {
       "assetId": "QCC",
       "minAmount": 1000000000,
-      "registration": "reserved"
+      "registration": "open"
     }
   },
 

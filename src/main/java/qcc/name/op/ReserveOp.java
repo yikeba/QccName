@@ -6,9 +6,7 @@ import qcc.name.protocol.ReservedDoc;
 
 /**
  * 保留名表生效（系统操作，无用户签名）。
- *
  *   QNS1|reserve|{chain}|{publisher}||{timestamp}|{reservedTx}|{height}|{documentHash}
- *
  * 主节点从 Reserved.config 读到新的交易 hash → 向多个 QCC 链节点取回该交易（from / 高度 / payload 一致）
  * → 写一条 reserve 帧。帧里携带完整文档，备节点与回放者只凭日志即可重建，不依赖各自读链的时间。
  *   chain        链上交易的 chain
@@ -18,7 +16,6 @@ import qcc.name.protocol.ReservedDoc;
  *   reservedTx   Reserved 文档所在交易 hash
  *   height       该交易所在区块高度（生效点，严格递增）
  *   document     文档原始字节（payload）
- *
  * 可验证性（L1）：任何人可以 GET /v1/hash/{reservedTx} 核对 from、高度与 payload。
  */
 public final class ReserveOp extends NameOp {

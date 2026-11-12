@@ -15,7 +15,7 @@ import java.util.Map;
 public interface Transport {
 
     /** 非主节点把用户请求透传给主节点。 */
-    SubmitResult forwardSubmit(String targetNodeId, byte[] opBytes, byte[] signature);
+    SubmitResult forwardSubmit(String targetNodeId, byte[] opBytes, byte[] signature, byte[] pubkey);
 
     /** 主节点推送一帧，返回对端的 ACK；对端拒绝或不可达返回 null。 */
     Ack pushFrame(String fromNodeId, String targetNodeId, FramePacket packet);

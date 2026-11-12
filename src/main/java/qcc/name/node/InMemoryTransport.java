@@ -24,9 +24,9 @@ public final class InMemoryTransport implements Transport {
     public boolean isDown(String id)       { return down.contains(id) || !nodes.containsKey(id); }
 
     @Override
-    public SubmitResult forwardSubmit(String target, byte[] opBytes, byte[] sig) {
+    public SubmitResult forwardSubmit(String target, byte[] opBytes, byte[] sig, byte[] pubkey) {
         if (isDown(target)) return SubmitResult.unavailable("主节点 " + target + " 不可达");
-        return nodes.get(target).submit(opBytes, sig);
+        return nodes.get(target).submit(opBytes, sig, pubkey);
     }
 
     @Override

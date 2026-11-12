@@ -37,6 +37,10 @@ final class BcMlDsa implements MlDsa87.Backend {
                 ((MLDSAPrivateKeyParameters) kp.getPrivate()).getEncoded());
     }
 
+    /** BC 的私钥编码就是 FIPS 204 标准编码。 */
+    @Override
+    public byte[] signRaw(byte[] rawPrivateKey, byte[] message) { return sign(rawPrivateKey, message); }
+
     @Override
     public byte[] sign(byte[] privateKey, byte[] message) {
         try {

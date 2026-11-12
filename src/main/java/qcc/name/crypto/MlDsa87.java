@@ -22,6 +22,8 @@ public final class MlDsa87 {
         boolean verify(byte[] rawPubkey, byte[] message, byte[] signature);
         Keys    generate();
         byte[]  sign(byte[] privateKey, byte[] message);
+        /** 用 FIPS 204 标准编码的私钥（4896 字节，钱包 privateKeyHex 的格式）签名。 */
+        byte[]  signRaw(byte[] rawPrivateKey, byte[] message);
     }
 
     private static final Backend B = choose();
@@ -53,4 +55,13 @@ public final class MlDsa87 {
 
     public static Keys   generate()                       { selfCheck(); return B.generate(); }
     public static byte[] sign(byte[] priv, byte[] message) { selfCheck(); return B.sign(priv, message); }
+
+    /** 用钱包格式的私钥（FIPS 204 标准编码 4896 字节）签名，两种后端都支持。 */
+    public static byte[] signRaw(byte[] rawPriv, byte[] message) {
+        selfCheck();
+        if (rawPriv == null || rawPriv.length != PRIVKEY_LEN) throw new IllegalArgumentException("私钥必须是 " + PRIVKEY_LEN + " 字节");
+        return B.signRaw(rawPriv, message);
+    }
+
+    public static final int PRIVKEY_LEN = 4896;
 }

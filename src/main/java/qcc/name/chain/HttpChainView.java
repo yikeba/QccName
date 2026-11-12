@@ -16,18 +16,15 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 通过 QCC 公链 HTTP API 读取链上事实。只依赖 JDK。
- *
  * ═══ GET /v1/pledge/{address}?tag=&hash=&assetId=&minAmount=0（已实测）═══
  *   命中  {"ok":true,"kind":"pledge","data":"{\"address\":…,\"exists\":true,\"assetId\":\"QCC\",
  *          \"amount\":1000000000,\"from\":…,\"regTime\":…,\"qualified\":true,…}"}
  *   未命中 data 里 exists=false
  *   失败  {"ok":true,"data":"error"}（PledgeContext 吞掉异常后的返回）→ ChainUnavailableException
  *   门槛不交给服务端判断：minAmount=0，金额在本地按协议 TagPolicy 比较。
- *
  * ═══ GET /v1/addresskey/{address}（已实测，二进制）═══════════════════
  *   u32 len | "QAKG" | u16 addrLen | addr | u16 hexLen | hex(5184) | 8 字节
  *   【假设】末尾 8 字节含义未确认（推测为时间戳或高度），这里不使用。
- *
  * ═══ chainTime ═══════════════════════════════════════════════════
  *   【假设，需确认】目前没有"最新容器时间戳"的接口，暂用本机墙钟并保证单调不减。
  *   chainTime 由主节点写进帧，备节点与回放者不重新获取，所以这里换实现不影响已写入的帧。
@@ -100,14 +97,24 @@ public final class HttpChainView implements ChainView {
         }
     }
 
+    /**
+     * GET /v1/hash/{txHash}（已实测）
+     *   命中   {"ok":true,"kind":"TX","status":"SUCCESS","data":"{\"tx\":…,\"height\":…,\"confirmTimestamp\":…}"}
+     *   查不到 {"ok":false,"error":"transaction not found: <txHash>"} → null
+     *   其他 ok=false / 结构不符 → ChainUnavailableException（稍后重试，不当成"没有"）
+     */
     @Override
     public ChainTx tx(String txHash) {
         byte[] body = get(base + "/v1/hash/" + enc(txHash));
         if (body == null || body.length == 0) return null;
         try {
             Map<String, Object> outer = StrictJson.parseObject(body);
-            if (!StrictJson.bool(outer, "ok") || !(outer.get("data") instanceof String d) || d.isEmpty()
-                    || "error".equals(d) || "{}".equals(d) || "null".equals(d)) return null;    // 链上没有这笔交易
+            // 查不到（已实测）：{"ok":false,"error":"transaction not found: <txHash>"}
+            if (!StrictJson.bool(outer, "ok")) {
+                Object e = outer.get("error");
+                if (e instanceof String err && err.startsWith("transaction not found")) return null;
+                throw new ChainUnavailableException("交易查询失败: " + txHash + "：" + e);
+            }
             return ChainTx.parse(txHash, body);
         } catch (RuntimeException e) {
             throw new ChainUnavailableException("交易响应结构不符: " + txHash + "：" + e.getMessage(), e);

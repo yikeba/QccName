@@ -1,41 +1,41 @@
-# qccname 节点配置（v1.0 公网测试）。
+# qccname 节点配置（P2P，v1.0 公网测试）
 # 放在启动目录 ./qccname.properties 或 ~/qccname/config/qccname.properties（先找前者）。
-# 第一次启动找不到配置时，会在 ~/qccname/config/ 生成模板（含新生成的 clusterKey）后退出。
-#
-# 所有节点必须一致的项：nodes / observers / clusterKey / instance / protocol(Hash)
-# 启动日志会打印"节点表摘要"，各节点不一致时同步会失败。
 
-# ── 核心节点：QCC地址@IP:端口，逗号分隔。顺序即序号表，第一个为初始主节点 ──────────
-# 至少 2 个（主 + 备）。写入需要至少 1 个备节点确认，否则返回 PENDING。
-nodes=QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1@203.0.113.10:9180,QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4@203.0.113.11:9180
+# ═══ 必填 3 项 ═══════════════════════════════════════════════════════════
 
-# ── 冗余节点：只同步与提供查询，不参与确认、不接班。可空，可多个 ──────────────────
-# IPv6 写成 地址@[2001:db8::1]:9180。冗余节点离线不影响写入，恢复后 10 秒内自动追平。
-observers=QHbsrvR6bPBkvE6M2Dp28V8sTXo8bs5nTH@[2001:db8::10]:9180
-
-# ── 本机节点地址（明文；钱包托管完成后改为节点钱包签名认证）──────────────────────
-# 可空：本机网卡上恰好有一个上面列表中的 IP 时自动识别。云主机 NAT / 家庭宽带之后必须填写。
-self=
-
-# ── 节点间通讯密钥：AES-256-GCM，64 位 hex，所有节点相同 ─────────────────────────
-# 生成：openssl rand -hex 32   （或删掉本项启动一次，错误提示里会给出一个新生成的）
+# 本机 QCC 地址（明文；钱包托管完成后改为节点钱包签名）。不填时用代码 QccNameConfig.DEFAULT_NODE_ID
+nodeId=QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1
+# 节点间 AES-256-GCM 密钥，64 位 hex，所有节点相同。生成：openssl rand -hex 32
 # 只放在服务器配置文件里，不要提交到代码仓库。
-clusterKey=
 
-# ── QCC 公链 API：逗号分隔，按顺序故障切换（失败的节点暂停 30 秒）──────────────────
-# 至少 2 个：质押回收（expire）需要 ≥2 个链节点都确认"质押已不存在"。
-# IPv6 链节点只有本机支持 IPv6 时可用，IPv4 主机上会被自动跳过。
-# ⚠ 端口 9080 按测试链 45.92.158.123:9080 推定，其余节点请核对实际 API 端口。
-chains=http://45.92.158.123:9080,http://192.131.142.226:9080,http://104.128.190.31:9080,http://23.238.114.155:9080,http://104.223.85.211:9080,http://[2001:f40:978:1c58:2f1:f5ff:fe35:fd73]:9080
+clusterKey=28a3bbe4079ad84f5c84c4552df2e1f92029ff541df6b9f9034254b9d84e2d9f
+# 已在运行的任意节点 IP:端口，逗号分隔，能连上一个即可（端口省略时为 9180）；IPv6 写成 [地址]:端口
+# 第一台（创世节点）留空 —— seeds 为空且本地无数据，本机即成为主节点
+# 配了 seeds 但都连不上时会一直重试，不会自封为主节点
 
-# ── 引导协议 ─────────────────────────────────────────────────────────────────
-# protocolHash = 协议文件原始字节的 SHA3-256；协议上链后必须填写（启动时校验，不一致拒绝启动）
-protocol=qcc-name-v1.0.0.json
-protocolHash=
+seeds=
+role=core
+# 本机公告 IP。空 = 自动判定：网卡上的公网 IPv4 优先，否则全局 IPv6。
+# AWS / GCP / Azure 等 1:1 NAT 云主机网卡上看不到公网 IP，必须填写
 
-# ── 其他 ─────────────────────────────────────────────────────────────────────
-instance=qccname-test
-# 数据与日志目录：home/<nodeId>/ 帧日志；home/logs/qccname-yyyyMMdd.log
-home=/opt/qccname/data
-# "::" 同时监听 IPv4 + IPv6；系统关闭 IPv6 时自动退回 0.0.0.0
-bind=::
+advertiseIp=192.168.100.12
+
+
+
+# ═══ 可选 ═════════════════════════════════════════════════════════════
+# 本机端口
+#port=9180
+
+
+# 角色。auto（默认）：公网 IPv4 → 核心（参与生产 / 备份 / 选举）；只有 IPv6 或 NAT → 冗余（只同步与查询）
+#role=auto
+
+# QCC 公链 API，逗号分隔，按顺序故障切换。不填使用代码 QccNameConfig.DEFAULT_CHAINS
+#chains=http://45.92.158.123:9080,http://192.131.142.226:9080
+
+# 协议上链后必须填写 protocolHash（启动时校验）
+#protocol=qcc-name-v1.0.0.json
+#protocolHash=
+#instance=qccname-test
+#home=/opt/qccname/data
+#bind=::

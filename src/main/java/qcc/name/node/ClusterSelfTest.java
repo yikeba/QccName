@@ -4,6 +4,7 @@ import qcc.name.Check;
 import qcc.name.chain.MockChainView;
 import qcc.name.codec.Sha3;
 import qcc.name.crypto.MlDsa87;
+import qcc.name.crypto.QccAddress;
 import qcc.name.op.RegisterOp;
 import qcc.name.protocol.NameProtocol;
 import qcc.name.protocol.ProtocolLoader;
@@ -39,7 +40,7 @@ public final class ClusterSelfTest {
 
     private int go() throws Exception {
         root = Files.createTempDirectory("qccname-cluster");
-        p = ProtocolLoader.loadFile(Path.of("qcc-name-v1.0.0.json"), null);
+        p = ProtocolLoader.loadFile(Path.of("testdata/qcc-name-test-v1.0.0.json"), null);
         try {
             step("1. 创世 + 加入");
             start(A, true, List.of());
@@ -76,6 +77,7 @@ public final class ClusterSelfTest {
             c.ck(w.status() == SubmitResult.Status.OK, "经 C 写入（透传新主 B，C/D 确认 2 个 ACK）→ " + w.status());
 
             step("4. 旧主 A 恢复（不知道已被接班）");
+            Thread.sleep(300);                                           // 等 B 对离线 A 的后台试推结束（失败）
             net.setDown(A, false);
             SubmitResult stray = reg(n(A), "stray.qcc");
             c.ck(stray.status() == SubmitResult.Status.PENDING, "直连旧主 A 写入：其他核心拒收旧 term → PENDING");
@@ -147,7 +149,7 @@ public final class ClusterSelfTest {
 
     private SubmitResult reg(NameNode via, String name) {
         MlDsa87.Keys kp = MlDsa87.generate();
-        String addr = "QUser" + "abcdefghijkmnopqrstuvwxyz".charAt(userNo++ % 25) + "x".repeat(28);
+        String addr = QccAddress.derive(kp.pub());
         chain.putPubkey(addr, kp.pub());
         String cred = Sha3.toHex(Sha3.hashUtf8(addr + name));
         chain.lock(addr, p.pledgeTag, cred, "QCC", 1_000_000_000L, "QFrom");

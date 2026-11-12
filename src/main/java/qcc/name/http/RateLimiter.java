@@ -18,7 +18,7 @@ final class RateLimiter {
     RateLimiter(int writePerMin, int readPerMin, Set<InetAddress> exempt) {
         this.writePerMin = writePerMin;
         this.readPerMin = readPerMin;
-        this.exempt = Set.copyOf(exempt);
+        this.exempt = exempt;          // 可为动态集合（成员表变化时更新）
     }
 
     /** 允许返回 true；超限返回 false。 */

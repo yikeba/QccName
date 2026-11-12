@@ -1,11 +1,8 @@
 plugins {
-    id 'org.springframework.boot' version '3.3.5'
-    id 'io.spring.dependency-management' version '1.1.6'
     id 'java'
-    id 'org.jetbrains.kotlin.jvm'
 }
 
-group = 'chat.qube'
+group = 'qcc.name'
 version = '1.0.0'
 
 repositories {
@@ -13,32 +10,64 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-
-    // Netty + RocksDB + BouncyCastle（抗量子）
-    implementation 'io.netty:netty-all:4.1.114.Final'
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
-    implementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
-    implementation 'org.bouncycastle:bcpg-jdk18on:1.78.1'  // 这行必须加！PQC依赖它
-    // 2. Alibaba Fastjson2 —— 你点名要的！全球最硬最快JSON库！
-    implementation("com.alibaba.fastjson2:fastjson2:2.0.52")
-
-   /* implementation 'org.iq80.leveldb:leveldb:0.12'
-    implementation 'org.iq80.leveldb:leveldb-api:0.12'*/
-    // LZ4 压缩库（高性能）
-    implementation 'org.lz4:lz4-java:1.8.0'
-
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    // ML-DSA-87：验签直接使用 QCC 的 DilithiumVerifier（与 QCC 同版本 BC）。
+    // 只需要 bcprov；bcpkix / bcpg 是 QCC 其他功能用的，namespace 用不到。
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.81'
 }
 
-tasks.named('bootJar') {
-    archiveFileName = 'qubechain-node.jar'
+// 与 QCC 开发环境一致：JDK 23（JDK 23 没有原生 ML-DSA，由 bcprov 提供；JDK 24+ 时去掉 bcprov 也能运行）
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }
-kotlin {
-    jvmToolchain(23)
+
+def runTask(String name, String main, Map<String, String> props, String grp = 'qccname') {
+    tasks.register(name, JavaExec) {
+        group = grp
+        classpath = sourceSets.main.runtimeClasspath
+        mainClass = main
+        workingDir = projectDir
+        jvmArgs '-Dstdout.encoding=UTF-8'
+        systemProperties props
+        standardInput = System.in
+    }
+}
+
+runTask('selfTest', 'qcc.name.AllTests', [:], 'verification')            // 全部自测（含进程内两节点模拟）
+runTask('simulate', 'qcc.name.sim.LocalSimulation', [:])                 // 进程内两节点模拟
+runTask('devChain', 'qcc.name.dev.DevChainServer', [:])                  // 开发链 :9190（不连测试链时用）
+runTask('node', 'qcc.name.node.NodeMain', [:])                           // 节点：一台服务器一个，配置见 QccNameConfig
+runTask('devClient', 'qcc.name.dev.DevClient', [:])                      // ./gradlew devClient --args="register alice alice.qcc"
+
+// === Fat Jar：./gradlew jar → build/libs/qccname.jar（依赖全部打入，java -jar 直接运行）===
+jar {
+    archiveFileName = 'qccname.jar'
+    manifest {
+        attributes(
+                'Main-Class': 'qcc.name.node.NodeMain',
+                'Implementation-Title': 'QCC-Namespace',
+                'Implementation-Version': version
+        )
+    }
+
+    // 将所有依赖库解压并打入 Jar
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // BouncyCastle 是签名 jar：必须排除签名文件，否则 java -jar 运行报 SecurityException
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    exclude 'META-INF/*.EC'
+    // BC 的多版本 module-info 与本工程无关
+    exclude 'module-info.class'
+    exclude 'META-INF/versions/*/module-info.class'
 }

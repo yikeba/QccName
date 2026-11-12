@@ -18,6 +18,14 @@ public interface ChainView {
      * 回收名称（expire）前使用：质押"确认不存在"。expire 会写帧删除别人的名称、不可撤回，
      * 不能因为某个落后的链节点暂时查不到就判定撤销。多节点实现要求多个节点一致确认；单节点实现等同 !exists。
      */
+    /**
+     * 取一笔交易（GET /v1/hash/{txHash}）。查不到返回 null。
+     * 用于 Reserved：多节点实现要求多个链节点回答一致，任何不一致都抛 ChainUnavailableException（宁可稍后重试）。
+     */
+    default ChainTx tx(String txHash) throws ChainUnavailableException {
+        throw new ChainUnavailableException("本链视图不支持交易查询");
+    }
+
     default boolean pledgeGoneConfirmed(String address, String tag, String credentialHash) throws ChainUnavailableException {
         return !authPledge(address, tag, credentialHash).exists();
     }

@@ -37,10 +37,12 @@ ref = next((r[3]["execHash"] for r in rows if r[3].get("seq") == top and r[3].ge
       or next((r[3]["execHash"] for r in rows if r[3].get("seq") == top), None)
 print(f"实例端口 {port}   term={cl.get('term')}   主={str(cl.get('primary',''))[:12]}…   核心 {len(cl.get('cores',[]))}  冗余 {len(cl.get('observers',[]))}   过半={len(cl.get('cores',[]))//2+1}")
 print(f"{'节点':<14}{'类型':<6}{'角色':<10}{'term':>5}{'seq':>8}  {'execHash':<18} 地址")
-bad = lag = down = 0
+bad = lag = down = noroute = 0
 hashes = {}
 for nid, a, kind, s in rows:
     if "_err" in s:
+        if "Errno 101" in s["_err"] or "Network is unreachable" in s["_err"]:
+            noroute += 1; print(f"{nid[:12]+'…':<14}{kind:<6}{'本机无路由':<10}{'':>5}{'':>8}  {'':<18} {a}  （本机没有 IPv6，无法访问，不代表节点故障）"); continue
         down += 1; print(f"{nid[:12]+'…':<14}{kind:<6}{'不可达':<10}{'':>5}{'':>8}  {'':<18} {a}  ({s['_err']})"); continue
     seq, h = s.get("seq"), s.get("execHash", "")
     hashes.setdefault(seq, set()).add(h)
@@ -50,7 +52,13 @@ for nid, a, kind, s in rows:
 fork = [q for q, hs in hashes.items() if len(hs) > 1]
 print("─" * 78)
 if fork: print(f"✗ 分叉：seq {fork} 上出现不同的 execHash —— 立即停止写入，保留各节点日志"); sys.exit(1)
-if down or lag: print(f"… 不可达 {down} 台，同步中 {lag} 台（seq 落后于 {top}）；其余一致")
+ok = len(rows) - down - lag - noroute
+if down or lag:
+    print(f"… 一致 {ok} 台" + (f"，不可达 {down} 台" if down else "") + (f"，同步中 {lag} 台（seq 落后于 {top}）" if lag else "")
+          + (f"，本机无法访问 {noroute} 台" if noroute else ""))
+elif noroute:
+    print(f"✓ 可访问的 {ok} 台一致：seq={top}  execHash={ref}")
+    print(f"  另有 {noroute} 台 IPv6 节点本机无法访问 —— 请在有 IPv6 的节点上运行本脚本，查看全部 {len(rows)} 台")
 else: print(f"✓ 全部 {len(rows)} 台一致：seq={top}  execHash={ref}")
 PY
 }

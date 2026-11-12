@@ -1,20 +1,56 @@
-# qccname 节点配置。复制为 ./qccname.properties 或 ~/qccname/config/qccname.properties。
-# 不存在时使用 QccNameConfig 里的代码默认值；未写的项也取代码默认值。
+# qccname 节点配置（P2P）。放在应用当前目录：./qccname.properties（IDE 中即工程根目录）
+# 数据全部在 ~/qccname/ 下：{nodeId}/ 生产数据（帧日志、签名库、cluster.json）、logs/ 运行日志、dev/ 开发密钥
 
-# 全部节点：QCC 地址@公告IP:端口，逗号分隔。所有服务器必须完全一致（顺序即序号表，第一个为初始主节点）
-# IPv6 写成 地址@[2001:db8::1]:9180
-nodes=QWasmDyBQzCTdUhj6NLyfAzU6z5sTSdhM1@203.0.113.10:9180,QMnGE6bPBkvE6M2Dp28V8sTXo8bs5nTHy4@203.0.113.11:9180
+# ═══ 必填 ═══════════════════════════════════════════════════════════════
 
-# 本机节点地址。可留空：本机网卡上恰好有一个 nodes 中的 IP 时自动识别；云主机 NAT 之后必须填写
-self=
+# 本机 QCC 地址（明文；钱包托管完成后改为节点钱包签名）。不填时用代码 QccNameConfig.DEFAULT_NODE_ID
+nodeId=
 
-# QCC 公链 API（本地开发链：http://127.0.0.1:9190）
-chain=https://test.qccio.com
+# 节点间 AES-256-GCM 密钥，64 位 hex，所有节点相同。生成：openssl rand -hex 32；不要提交到代码仓库
+clusterKey=
 
-# 引导协议文件；protocolHash 为其原始字节 SHA3-256，上链后填写
-protocol=qcc-name-v1.0.0.json
-protocolHash=
+# 节点类型
+#   genesis     创世：整个集群只有第一台，启动即为主节点（核心）
+#   production  生产：核心节点，参与写入确认、投票、自动接班 —— 用公网 IPv4 服务器
+#   backup      备份：冗余节点，只同步数据与提供查询 —— 用于 IPv6 / 家庭节点
+type=production
 
-instance=qccname-test
-home=/data/qccname
-bind=0.0.0.0
+# 已在运行的任意节点 IP:端口，逗号分隔，能连上一个即可（端口省略为 9180）；IPv6 写成 [地址]:端口
+# production / backup 必填；genesis 留空（若填写，启动前会检查这些节点上是否已有集群，有则拒绝创世）
+seeds=
+
+# ═══ 可选 ═══════════════════════════════════════════════════════════════
+
+# 本机公告 IP。空 = 自动判定（网卡上的公网 IPv4 优先，否则全局 IPv6）
+# 局域网测试、1:1 NAT 云主机（AWS / GCP / Azure）必须填本机真实 / 公网 IP
+#advertiseIp=
+
+#port=9180
+# QCC 公链 API，逗号分隔，按顺序故障切换。不填使用代码 QccNameConfig.DEFAULT_CHAINS
+#chains=http://45.92.158.123:9080,http://192.131.142.226:9080
+# 协议上链后必须填写 protocolHash（启动时校验）
+# 协议文件：公开实例 qcc-name-public-v1.0.0.json（默认，.qcc 开放注册）
+#           OSN 企业实例 qcc-name-osn-v1.0.0.json（.osn / .osnsg 不开放注册，必须配置 protocolTx，instance 也要不同）
+#protocol=qcc-name-public-v1.0.0.json
+#protocolHash=
+# 本协议在 QCC 公链上的交易 hash。配置后启用保留名（Reserved）：启动时取回该交易，payload 必须等于本地协议，
+# 交易 from = 保留名发布者。所有节点必须相同。不配置 = Reserved 关闭，所有 tag 完全开放、先到先得
+#protocolTx=
+# Reserved 交易 hash 列表（每行一个，按发布顺序追加，# 为注释），每 30 秒检查一次；主节点取回并写入日志，其他节点从日志同步
+#reserved=Reserved.config
+# 实例名：同一集群所有节点相同；同机多实例时各不相同（qccname-public / qccname-osn），同时是数据目录名
+#instance=qccname-test
+# 本实例数据目录，默认 ~/qccname/{instance}（帧日志、cluster.json、logs、pid）
+#home=
+#bind=::
+
+# ═══ 网站与 HTTPS（可选）══════════════════════════════════════════════════
+# 静态网站目录（Flutter Web build/web 或 HTML），HTTP 与 HTTPS 端口都提供；直接替换文件即生效，无需重启
+#webDir=/root/qccname/web
+# HTTPS：keystore 文件存在才启用（.jks 或 .p12）；证书更新后 10 分钟内自动热加载，无需重启
+# 同机多实例共用 ~/qccname/ssl；端口已被另一实例占用时自动跳过 HTTPS，只提供 HTTP（不影响启动）
+#httpsPort=443
+#keystore=/root/qccname/ssl/qccname.jks
+#keystorePass=
+# 每帧打印一行 [写入] / [同步]（每 60 秒另有 [进度] 汇总）；流量大时可关闭
+#logOps=true

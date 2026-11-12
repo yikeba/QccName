@@ -12,7 +12,7 @@ public final class ProtocolSelfTest {
 
     public static int run(String[] args) throws Exception {
         Check c = new Check();
-        byte[] raw  = Files.readAllBytes(Path.of("qcc-name-v1.0.0.json"));
+        byte[] raw  = Files.readAllBytes(Path.of("testdata/qcc-name-test-v1.0.0.json"));
         byte[] meta = Files.readAllBytes(Path.of("qcc-meta-v1.0.0.json"));
         String s = new String(raw, StandardCharsets.UTF_8);
 
@@ -22,6 +22,14 @@ public final class ProtocolSelfTest {
 
         NameProtocol p = ProtocolLoader.load(raw, null);
         c.ck(p.tags.containsKey("qcc") && p.pledgeTag.equals("qccio") && p.cooldownMs == 2592000000L, "qcc-name 协议加载: " + p);
+        NameProtocol pub = ProtocolLoader.loadFile(Path.of("qcc-name-public-v1.0.0.json"), null);
+        NameProtocol osn = ProtocolLoader.loadFile(Path.of("qcc-name-osn-v1.0.0.json"), null);
+        c.ck(pub.tags.keySet().equals(java.util.Set.of("qcc")) && pub.tag("qcc").open() && !pub.hasReservedOnlyTags(),
+                "公开实例协议：只有 .qcc，开放注册  hash=" + pub.protocolHash);
+        c.ck(osn.tags.keySet().equals(java.util.Set.of("osn", "osnsg")) && !osn.tag("osn").open() && !osn.tag("osnsg").open(),
+                "OSN 企业实例协议：.osn / .osnsg 不开放注册  hash=" + osn.protocolHash);
+        c.ck(c.throwsAny(() -> NameProtocol.parse(bytes(s.replaceFirst("\"registration\": \"open\"", "\"registration\": \"closed\"")))),
+                "registration 非 open / reserved → 拒绝启动");
         c.ck(c.throwsAny(() -> ProtocolLoader.load(raw, "00".repeat(32))), "hash 不符 → 拒绝启动");
 
         c.ck(c.throwsAny(() -> NameProtocol.parse(bytes(s.replace("\"status\": \"voluntary\",", "\"status\": \"voluntary\",\n  \"extra\": 1,")))),

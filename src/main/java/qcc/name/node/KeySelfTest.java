@@ -34,14 +34,16 @@ public final class KeySelfTest {
         c.ck(QccAddress.matches(k1.pub(), a1) && !QccAddress.matches(k2.pub(), a1), "公钥与地址绑定：别人的公钥推导不出该地址");
 
         // ── 集群：主 A + 备 B，链上没有 a1 / a2 的公钥 ──
-        NameProtocol p = ProtocolLoader.loadFile(Path.of("qcc-name-v1.0.0.json"), null);
+        NameProtocol p = ProtocolLoader.loadFile(Path.of("testdata/qcc-name-test-v1.0.0.json"), null);
         MockChainView chain = new MockChainView(1_793_520_000_000L);
         InMemoryTransport net = new InMemoryTransport();
         Path root = Files.createTempDirectory("qccname-keys");
         List<String> order = List.of("QKeyNodeAaaaaaaaaaaaaaaaaaaaaaaaaa", "QKeyNodeBbbbbbbbbbbbbbbbbbbbbbbbbb");
-        NameNode A = node(order.get(0), root, order, p, chain, net), B = node(order.get(1), root, order, p, chain, net);
+        MockChainView chainB = new MockChainView(1_793_520_000_000L);   // B 连的链节点公钥库与 A 的不一致（实测出现过）
+        NameNode A = node(order.get(0), root, order, p, chain, net), B = node(order.get(1), root, order, p, chainB, net);
         try {
             String cred1 = pledge(chain, p, a1), cred2 = pledge(chain, p, a2), cred3 = pledge(chain, p, a3);
+            pledge(chainB, p, a1); pledge(chainB, p, a2); pledge(chainB, p, a3);
             chain.putPubkey(a3, k3.pub());                                 // a3 链上有公钥
 
             SubmitResult r = reg(A, chain, p, k1, a1, "zero.qcc", cred1, null);
@@ -64,10 +66,26 @@ public final class KeySelfTest {
             r = A.submit(u.toBytes(), MlDsa87.sign(k1.priv(), u.signBytes()));
             c.ck(r.status() == SubmitResult.Status.OK, "删除不带公钥（用缓存）→ " + r);
 
+            // 注册前预检（/v1/check）
+            c.ck(A.check("free.qcc", "", "").available(), "预检 free.qcc → 可以注册");
+            c.ck(A.check("zero2.qcc", "", "").resultCode() == 13 && a2.equals(A.check("zero2.qcc", "", "").holder()), "预检 zero2.qcc → 已被注册（13），返回持有人");
+            c.ck(A.check("zero.qcc", "", "").resultCode() == 14, "预检 zero.qcc（刚删除）→ 冷却期（14）");
+            c.ck(A.check("admin.qcc", "", "").resultCode() == 0, "预检 admin.qcc → 可注册（协议不内置保留名）");
+            c.ck(A.check("zer0-2.qcc", "", "").resultCode() == 10 || A.check("-x.qcc", "", "").resultCode() == 10, "预检格式错误 → 10");
+            c.ck(A.check("another.qcc", a2, "").resultCode() == 20, "预检带地址：a2 在 .qcc 已有名字 → 20");
+            c.ck(A.check("another.qcc", a2, "ff".repeat(32)).resultCode() == 20 || A.check("another.osn", a2, "ff".repeat(32)).resultCode() == 30,
+                    "预检带错误凭证 → 质押不满足（30）");
+            c.ck(A.check("another.osn", a2, cred2).available(), "预检带真实凭证 → 可以注册（含质押）");
+            c.ck(A.check("x.xyz", "", "").resultCode() == 15, "预检未开放的 tag → 15");
+            long before = A.maxSeq();
+            c.ck(A.maxSeq() == before, "预检不写日志");
+
             r = reg(A, chain, p, k3, a3, "onchain.qcc", cred3, k1.pub());
             c.ck(r.status() == SubmitResult.Status.DROPPED && r.message().contains("不一致"), "链上有公钥时提交不同公钥 → DROPPED：" + r.message());
             r = reg(A, chain, p, k3, a3, "onchain.qcc", cred3, k3.pub());
-            c.ck(r.status() == SubmitResult.Status.OK && "chain".equals(A.pubkeyOf(a3).source()), "链上有公钥：用链上的，不缓存 → " + r);
+            c.ck(r.status() == SubmitResult.Status.OK && "chain".equals(A.pubkeyOf(a3).source()), "链上有公钥：用链上的，主节点不缓存 → " + r);
+            c.ck(B.maxSeq() == A.maxSeq() && B.execHex().equals(A.execHex()),
+                    "备节点连的链节点查不到 a3 公钥，仍凭帧携带的公钥同步成功 seq=" + B.maxSeq());
 
             // 新节点从零追平：只靠帧里携带的公钥就能验签
             NameNode C = new NameNode(new NodeConfig("QKeyNodeCcccccccccccccccccccccccccc", root.resolve("C"),

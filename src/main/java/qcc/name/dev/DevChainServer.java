@@ -3,6 +3,7 @@ package qcc.name.dev;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import qcc.name.chain.MockChainView;
+import qcc.name.config.QccNameConfig;
 import qcc.name.chain.PledgeFact;
 import qcc.name.codec.Sha3;
 import qcc.name.http.Json;
@@ -31,7 +32,7 @@ import java.util.TreeMap;
  *   POST /dev/pledge  {"to","amount"[,"assetId","tag","from"]}  建一笔授权质押，返回 {"hash"}
  *   POST /dev/revoke  {"to","hash"[,"tag"]}             发起方撤销授权
  *
- *   java -cp … qcc.name.dev.DevChainServer [port=9190]
+ * 只在不连测试链时使用：把配置中 chains 的第一项改成 http://127.0.0.1:9190。直接运行，无需参数。
  */
 public final class DevChainServer {
 
@@ -40,7 +41,8 @@ public final class DevChainServer {
     private final SecureRandom rnd = new SecureRandom();
 
     public static void main(String[] args) throws Exception {
-        int port = args.length > 0 ? Integer.parseInt(args[0]) : 9190;
+        int port = java.net.URI.create(QccNameConfig.load().chains.get(0)).getPort();
+        if (port < 1) port = 9190;      // chain 指向测试链时，开发链仍用 9190
         new DevChainServer().start(port);
         System.out.println("开发链已启动 http://127.0.0.1:" + port + "  （内存数据，重启清空）");
     }

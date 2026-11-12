@@ -1,30 +1,42 @@
-# qccname v1.0 部署（公网测试）
+# qccname v1.0 部署（P2P 公网测试）
+
+> 完整运维手册（单实例 / 单机多实例 / 企业 Reserved 发布）：[docs/OPERATIONS.md](../docs/OPERATIONS.md)
 
 ## 1. 打包（开发机）
-    ./gradlew selfTest installDist
-    → build/install/qccname/ 整个目录拷到服务器（或 ./gradlew distZip 得到 zip）
+    ./gradlew selfTest jar
+    → build/libs/qccname.jar（依赖已打入）。服务器上放同一目录：
+      qccname.sh  qccname.jar  qccname.properties  qcc-name-public-v1.0.0.json（OSN 实例用 qcc-name-osn-v1.0.0.json）
+    → ./qccname.sh start（Linux）；Windows：java -Xmx256m -jar qccname.jar
 
 ## 2. 每台服务器
-1. JDK 23+（与 QCC 相同；JDK 23 依赖 lib/bcprov-jdk18on-1.81.jar，已在包内）
-2. 时间同步：`timedatectl set-ntp true`（节点间加密消息时间窗 ±60s，用户请求时间窗 ±5 分钟）
-3. 复制 `qccname.properties.example` 为 `qccname.properties`，填写：
-   - nodes / observers / clusterKey / chains / protocolHash —— **所有节点一致**
-   - self = 本机 QCC 地址（NAT、家庭宽带必须填）
-4. 防火墙只开放 qccname 端口（默认 9180，TCP，IPv4 + IPv6）
-5. 启动：`bin/qccname`（Linux）、`deploy\qccname-win.bat`（Windows）或 systemd（`deploy/qccname.service`）
+1. JDK 23+（JDK 23 依赖 lib/bcprov-jdk18on-1.81.jar，已在包内）
+2. 时间同步：`timedatectl set-ntp true`（节点间加密消息时间窗 ±60s）
+3. 应用目录下的 `qccname.properties`（数据在 `~/qccname/`）：
+   ```properties
+   nodeId=本机QCC地址
+   clusterKey=所有节点相同的64位hex
+   type=production             # 第一台 genesis；IPv4 生产节点 production；IPv6 备份节点 backup
+   seeds=45.92.158.123:9180    # genesis 留空；其余写已在运行的任意一台
+   ```
+4. 防火墙开放 9180/TCP（IPv4 + IPv6）
+5. 启动：`./qccname.sh start`（status / log / stop / restart / check）
 
-## 3. 启动核对
-- 各节点启动日志的 **节点表摘要** 一致
-- `curl http://IP:9180/v1/status` 各节点 seq、execHash 一致
-- 备 / 冗余节点日志出现 `[net] … HTTP 403（clusterKey 不一致或时钟偏差 >60s）` → 检查密钥与 NTP
+## 3. 推荐部署顺序（4 台 IPv4 + 2 台 IPv6）
+1. IPv4 节点 1：`type=genesis`，seeds 空 → 启动后为主节点
+2. IPv4 节点 2、3、4：`type=production`，seeds = 节点 1 → 核心节点
+3. IPv6 节点 5、6：`type=backup`，seeds = 任意已运行节点 → 冗余节点
+4. 任意节点 `curl http://IP:9180/v1/status`：role / term / seq / execHash 一致，`cluster` 中 4 核心 2 冗余
 
-## 4. 运维
-| 操作 | 命令（只能在节点本机执行） |
+## 4. 故障与恢复
+| 情况 | 行为 |
 |---|---|
-| 主节点故障，备节点接班 | `curl -X POST "http://127.0.0.1:9180/admin/promote?term=1"`（order[term mod 核心数] 必须是本机） |
-| 旧主恢复后重新加入 | `curl -X POST "http://127.0.0.1:9180/admin/rejoin?peer=新主地址"`（清空本地，全量同步） |
-| 冗余节点离线恢复 | 直接启动，自动追平 |
-| 日志 | `home/logs/qccname-yyyyMMdd.log` |
+| 主节点宕机（核心 ≥3） | 约 30–40 秒后接班顺位第一的核心节点自动当选（需过半核心同意） |
+| 主节点宕机（核心 <3） | 不自动接班；需要时在备节点本机 `curl -X POST http://127.0.0.1:9180/admin/promote` |
+| 旧主恢复 | 启动时探测到新主 → 自动退位；本地未确认的帧 → 自动清空并全量重新同步 |
+| 备 / 冗余节点离线恢复 | 直接启动，10 秒内追平 |
+| 更换节点类型 | 角色以首次加入为准：先在主节点 `/admin/remove` 该节点，清空其 `~/qccname/{nodeId}/` 后重新加入 |
+| 节点永久下线 | 在主节点本机 `curl -X POST "http://127.0.0.1:9180/admin/remove?id=地址"`（否则一直计入过半数） |
+| 4 核心中 2 台同时宕机 | 写入返回 PENDING（确认不足过半），恢复任意一台即恢复 |
 
 ## 5. 内存
-VPS 256MB 可运行（-Xmx128m，实测 300 名称时 RSS ≈ 80MB）。名称数超过约 8 万时调大到 -Xmx160m 并加 swap，或使用 512MB。
+256MB VPS 可运行（-Xmx128m，约 8 万名称以内）；512MB 更稳。

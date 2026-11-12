@@ -155,6 +155,9 @@ public final class NameProtocol {
 
     public boolean reservedEnabled() { return !reservedPublisher.isEmpty(); }
 
+    /** 是否存在不开放注册（registration = reserved）的 tag：这类 tag 必须配置 protocolTx 才有名字可用。 */
+    public boolean hasReservedOnlyTags() { return tags.values().stream().anyMatch(t -> !t.open()); }
+
     public TagPolicy tag(String tag) { return tags.get(tag); }
 
     public OpSpec op(int code) { return ops.get(code); }
@@ -195,10 +198,13 @@ public final class NameProtocol {
         for (String tag : t.keySet()) {
             if (!tag.matches("[a-z0-9-]{1,32}")) throw err("tag 名非法: " + tag);
             @SuppressWarnings("unchecked") Map<String, Object> p = (Map<String, Object>) t.get(tag);
-            exactKeys(p, Set.of("assetId", "minAmount"), "tags." + tag);
+            exactKeys(p, Set.of("assetId", "minAmount", "registration"), "tags." + tag);
             long min = num(p, "minAmount");
             if (min < 1) throw err("tags." + tag + ".minAmount 必须 ≥ 1");
-            out.put(tag, new TagPolicy(tag, str(p, "assetId"), min));
+            String reg = str(p, "registration");
+            if (!reg.equals(TagPolicy.OPEN) && !reg.equals(TagPolicy.RESERVED_ONLY))
+                throw err("tags." + tag + ".registration 只能是 open / reserved：" + reg);
+            out.put(tag, new TagPolicy(tag, str(p, "assetId"), min, reg.equals(TagPolicy.OPEN)));
         }
         return Collections.unmodifiableSortedMap(out);
     }

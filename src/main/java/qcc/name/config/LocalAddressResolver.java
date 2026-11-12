@@ -10,12 +10,10 @@ import java.util.List;
 
 /**
  * 本机公告地址判定（沿用 QCC LocalAddressResolver 的流程，IPv4 优先，IPv6 兜底），纯本地，不请求任何外部服务。
- *
  *   0. 配置 advertiseIp= 显式指定 → 直接采用（AWS / GCP / Azure 等 1:1 NAT 云主机必须指定）
  *   1. 网卡上直接持有公网 IPv4 → 采用，不再看 IPv6
  *   2. 否则取网卡上的全局 IPv6（2000::/3）
  *   3. 都没有 → NONE
- *
  * IPv6 取址规则（简化版，未依赖 QCC 的 Ipv6StableAddress）：
  *   优先 EUI-64 地址（接口标识中间为 ff:fe，由 MAC 派生，重启不变），其次按字符串排序取第一个。
  *   ⚠ Java 无法跨平台区分"隐私临时地址"与"稳定地址"；家用 IPv6 若开启了隐私扩展，

@@ -59,6 +59,29 @@ final class JdkMlDsa implements MlDsa87.Backend {
         }
     }
 
+    /**
+     * PKCS#8 外壳 + expandedKey（IETF LAMPS ML-DSA X.509 规范中私钥 CHOICE 之一）：
+     *   SEQUENCE { INTEGER 0, AlgorithmIdentifier(ML-DSA-87), OCTET STRING { OCTET STRING(4896 字节标准编码) } }
+     * 已用 JDK 25 对照独立实现（dilithium-py）验证签名互通。
+     */
+    private static final byte[] PKCS8_EXPANDED_PREFIX = {
+            0x30, (byte) 0x82, 0x13, 0x38,
+            0x02, 0x01, 0x00,
+            0x30, 0x0b, 0x06, 0x09, 0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x03, 0x13,
+            0x04, (byte) 0x82, 0x13, 0x24,
+            0x04, (byte) 0x82, 0x13, 0x20 };
+
+    @Override
+    public byte[] signRaw(byte[] rawPrivateKey, byte[] message) {
+        byte[] p8 = Arrays.copyOf(PKCS8_EXPANDED_PREFIX, PKCS8_EXPANDED_PREFIX.length + rawPrivateKey.length);
+        System.arraycopy(rawPrivateKey, 0, p8, PKCS8_EXPANDED_PREFIX.length, rawPrivateKey.length);
+        try {
+            return sign(p8, message);
+        } finally {
+            Arrays.fill(p8, (byte) 0);
+        }
+    }
+
     @Override
     public byte[] sign(byte[] privateKey, byte[] message) {
         try {

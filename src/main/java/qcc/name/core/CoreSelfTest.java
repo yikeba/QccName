@@ -50,7 +50,7 @@ public final class CoreSelfTest {
 
     public static int run(String[] args) {
         Check c = new Check();
-        NameProtocol p = ProtocolLoader.loadFile(Path.of("qcc-name-v1.0.0.json"), null);
+        NameProtocol p = ProtocolLoader.loadFile(Path.of("testdata/qcc-name-test-v1.0.0.json"), null);
         CoreSelfTest x = new CoreSelfTest(p);
         long Q = 1_000_000_000L;
 
@@ -185,6 +185,12 @@ public final class CoreSelfTest {
         c.ck(r.execHex().equals(y.m.execHex()) && r.state().digest().equals(y.m.state().digest()),
                 "Reserved 日志独立重放：execHash 与状态摘要一致");
         c.ck(c.throwsAny(() -> new NameMachine(base, "core-test").apply(y.log.get(0))), "发布者不同（未配置 protocolTx）→ 创世 execHash 分歧");
+
+        // 企业 tag（registration = reserved）：不开放注册，名字只来自 Reserved
+        c.ck(y.eval(y.reg(B, "bob.corp", H2), true, Q) == ResultCode.TAG_NOT_OPEN, "企业 tag：自助注册 bob.corp → 15");
+        byte[] d3 = doc(p, 3, TX2, "\"admin.osn\": \"" + B + "\", \"ceo.corp\": \"" + A + "\"", "");
+        c.ck(y.put(y.rsv(A, C, TX3, 300, d3), false, 0) == 0 && A.equals(st.reservedAddress("ceo.corp")),
+                "企业 tag：发布者在 Reserved 中分配 ceo.corp → A");
 
         CoreSelfTest z = new CoreSelfTest(base);
         c.ck(z.put(z.rsv(A, C, TX1, 100, d1), false, 0) == ResultCode.RESERVE_PUBLISHER, "未配置 protocolTx：任何 reserve → 50");

@@ -6,6 +6,7 @@ import qcc.name.chain.MultiChainView;
 import qcc.name.codec.Sha3;
 import qcc.name.crypto.ClusterCipher;
 import qcc.name.crypto.MlDsa87;
+import qcc.name.crypto.QccAddress;
 import qcc.name.dev.DevChainServer;
 import qcc.name.node.NameNode;
 import qcc.name.node.NodeConfig;
@@ -73,7 +74,7 @@ public final class NetSelfTest {
     // ── 2 核心 + 1 冗余，真实 HTTP + 加密 ─────────────────────────
 
     static void cluster(Check c) throws Exception {
-        NameProtocol p = ProtocolLoader.loadFile(Path.of("qcc-name-v1.0.0.json"), null);
+        NameProtocol p = ProtocolLoader.loadFile(Path.of("testdata/qcc-name-test-v1.0.0.json"), null);
         MockChainView chain = new MockChainView(System.currentTimeMillis());
         Path root = Files.createTempDirectory("qccname-net");
         byte[] key = Sha3.fromHex(qcc.name.config.QccNameConfig.newKeyHex());
@@ -97,9 +98,10 @@ public final class NetSelfTest {
         try {
             SecureRandom rnd = new SecureRandom();
             List<String> names = new ArrayList<>();
+            String firstAddr = null;
             for (int i = 0; i < 5; i++) {
                 MlDsa87.Keys kp = MlDsa87.generate();
-                String addr = "QNetUser" + "ABCDE".charAt(i) + "x".repeat(26);
+                String addr = QccAddress.derive(kp.pub());
                 chain.putPubkey(addr, kp.pub());
                 byte[] h = new byte[32]; rnd.nextBytes(h);
                 String cred = Sha3.toHex(h);
@@ -109,18 +111,19 @@ public final class NetSelfTest {
                 SubmitResult r = entry.submit(op.toBytes(), MlDsa87.sign(kp.priv(), op.signBytes()));
                 c.ck(r.status() == SubmitResult.Status.OK, "经节点 " + (i % 3) + " 注册 net" + i + ".qcc → " + r);
                 names.add(op.name);
+                if (i == 0) firstAddr = addr;
             }
             Thread.sleep(500);                                  // 冗余节点为异步推送
             NameNode n0 = nodes.get(0), n1 = nodes.get(1), ob = nodes.get(2);
             c.ck(n1.maxSeq() == n0.maxSeq() && n1.execHex().equals(n0.execHex()), "备节点同步（加密通道）seq=" + n1.maxSeq());
             c.ck(ob.maxSeq() == n0.maxSeq() && ob.execHex().equals(n0.execHex()), "冗余节点同步 seq=" + ob.maxSeq());
-            c.ck(ob.verify(names.get(0), "QNetUserA" + "x".repeat(26)).match(), "冗余节点 verify 可用");
+            c.ck(ob.verify(names.get(0), firstAddr).match(), "冗余节点 verify 可用");
             c.ck(!ob.isPrimary(), "冗余节点永不为主");
 
             // 冗余节点离线后补齐：停掉服务，主节点继续写，再恢复 → syncTick 追平
             servers.get(2).stop();
             MlDsa87.Keys kp = MlDsa87.generate();
-            String addr = "QNetLate" + "y".repeat(26);
+            String addr = QccAddress.derive(kp.pub());
             chain.putPubkey(addr, kp.pub());
             String cred = Sha3.toHex(Sha3.hashUtf8("late"));
             chain.lock(addr, p.pledgeTag, cred, "QCC", 1_000_000_000L, "QFrom");
@@ -138,6 +141,15 @@ public final class NetSelfTest {
             HttpResponse<byte[]> plain = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(urls.get(ids[0]) + "/internal/heartbeat"))
                     .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofByteArray());
             c.ck(plain.statusCode() == 403, "明文访问 /internal/heartbeat → " + plain.statusCode());
+
+            // 按地址反查：名字 + 链上凭证（三要素）
+            String body = new String(HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(urls.get(ids[1])
+                    + "/v1/address?address=" + firstAddr)).build(), HttpResponse.BodyHandlers.ofByteArray()).body(), StandardCharsets.UTF_8);
+            c.ck(body.contains("\"name\":\"" + names.get(0) + "\"") && body.contains("\"status\":\"MATCH\"") && body.contains("\"creds\":{\"qccio\":\""),
+                    "GET /v1/address 反查到名字与 creds：" + body.substring(0, Math.min(160, body.length())) + "…");
+            String none = new String(HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(urls.get(ids[1])
+                    + "/v1/address?address=QNobodyAaaaaaaaaaaaaaaaaaaaaaaaaa")).build(), HttpResponse.BodyHandlers.ofByteArray()).body(), StandardCharsets.UTF_8);
+            c.ck(none.contains("\"names\":[]"), "无名字的地址 → names 为空");
         } finally {
             for (NameHttpServer s : servers) try { s.stop(); } catch (Exception ignored) { }
             for (NameNode n : nodes) n.close();
